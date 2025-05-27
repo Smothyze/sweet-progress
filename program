@@ -10,6 +10,10 @@ class SaveGameBackupApp:
         self.root = root
         self.root.title("Sweet Progress")
         self.root.geometry("600x400")
+        try:
+            self.root.iconbitmap('icon.ico')
+        except Exception as e:
+            print(f"Error loading icon: {e}")
         
         # Load configuration
         self.config_file = "savegame_backup_config.json"

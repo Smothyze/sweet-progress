@@ -8,7 +8,7 @@ from tkinter import filedialog, messagebox, ttk
 class SaveGameBackupApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Save Game Backup Tool")
+        self.root.title("Sweet Progress")
         self.root.geometry("600x400")
         
         # Load configuration

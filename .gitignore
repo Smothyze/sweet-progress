@@ -1,0 +1,17 @@
+# Configuration file
+savegame_config.json
+
+# Build directories
+build/
+dist/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# IDE files
+.vscode/
+.idea/
+
+# Windows specific
+*.exe 

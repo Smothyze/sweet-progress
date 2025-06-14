@@ -4,6 +4,8 @@ import json
 from datetime import datetime
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+from PIL import Image
+import io
 
 class SaveGameBackupApp:
     def __init__(self, root):
@@ -11,12 +13,22 @@ class SaveGameBackupApp:
         self.root.title("Sweet Progress")
         self.root.geometry("600x400")
         try:
-            self.root.iconbitmap('icon.ico')
+            # Convert PNG to ICO and set as icon
+            img = Image.open('icon-v2.png')
+            # Convert to RGBA if not already
+            if img.mode != 'RGBA':
+                img = img.convert('RGBA')
+            # Create ICO file in memory
+            icon_data = io.BytesIO()
+            img.save(icon_data, format='ICO', sizes=[(32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+            icon_data.seek(0)
+            # Set the icon
+            self.root.iconphoto(True, tk.PhotoImage(data=icon_data.getvalue()))
         except Exception as e:
             print(f"Error loading icon: {e}")
         
         # Load configuration
-        self.config_file = "savegame_backup_config.json"
+        self.config_file = "savegame_config.json"
         self.config = self.load_config()
         
         # Create GUI

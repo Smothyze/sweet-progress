@@ -19,9 +19,9 @@ A user-friendly tool to backup game save files with automatic path remembering f
   - Path validation before backup
 
 - 🔄 **Backup Functionality**
-  - Complete folder backup with timestamp
+  - Complete folder backup with timestamp (Ongoing)
   - Automatic creation of credit/readme file
-  - Overwrite protection for existing backups
+  - Overwrite protection for existing backups (Ongoing)
 
 ### User Experience
 - 📝 **Configuration Saving**

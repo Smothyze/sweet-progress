@@ -51,5 +51,3 @@ backup_savegame_with_credit(
 MIT License - See LICENSE file for details
 
 ---
-
-Would you like me to add any additional sections like troubleshooting, contribution guidelines, or a more detailed technical explanation of any part?

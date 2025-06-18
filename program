@@ -6,6 +6,28 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from PIL import Image
 import io
+import sys
+
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+# Path ke folder Resource
+RESOURCE_DIR = resource_path("Resource")
+ICON_PATH = os.path.join(RESOURCE_DIR, "icon.ico")
+CONFIG_PATH = os.path.join(RESOURCE_DIR, "savegame_config.json")
+
+# Validasi file icon
+if not os.path.exists(ICON_PATH):
+    root = tk.Tk()
+    root.withdraw()  # Hide main window
+    messagebox.showerror("Error", f"The icon file not detected on: {ICON_PATH}\nAplikasi akan ditutup.")
+    sys.exit(1)
 
 class SaveGameBackupApp:
     def __init__(self, root):
@@ -13,22 +35,12 @@ class SaveGameBackupApp:
         self.root.title("Sweet Progress")
         self.root.geometry("600x400")
         try:
-            # Convert PNG to ICO and set as icon
-            img = Image.open('icon-v2.png')
-            # Convert to RGBA if not already
-            if img.mode != 'RGBA':
-                img = img.convert('RGBA')
-            # Create ICO file in memory
-            icon_data = io.BytesIO()
-            img.save(icon_data, format='ICO', sizes=[(32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
-            icon_data.seek(0)
-            # Set the icon
-            self.root.iconphoto(True, tk.PhotoImage(data=icon_data.getvalue()))
+            self.root.iconbitmap(ICON_PATH)
         except Exception as e:
             print(f"Error loading icon: {e}")
         
         # Load configuration
-        self.config_file = "savegame_config.json"
+        self.config_file = CONFIG_PATH
         self.config = self.load_config()
         
         # Create GUI
@@ -42,8 +54,8 @@ class SaveGameBackupApp:
         }
         
         try:
-            if os.path.exists(self.config_file):
-                with open(self.config_file, "r") as f:
+            if os.path.exists(CONFIG_PATH):
+                with open(CONFIG_PATH, "r") as f:
                     return json.load(f)
         except Exception as e:
             print(f"Error loading config: {e}")
@@ -53,7 +65,7 @@ class SaveGameBackupApp:
     def save_config(self):
         """Save current configuration to file"""
         try:
-            with open(self.config_file, "w") as f:
+            with open(CONFIG_PATH, "w") as f:
                 json.dump(self.config, f, indent=4)
         except Exception as e:
             print(f"Error saving config: {e}")

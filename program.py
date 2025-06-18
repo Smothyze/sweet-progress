@@ -11,11 +11,25 @@ import sys
 def resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
     try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
+        # Get the directory where the executable is located
+        if getattr(sys, 'frozen', False):
+            # If the application is run as a bundle (exe)
+            base_path = os.path.dirname(sys.executable)
+        else:
+            # If the application is run from a Python interpreter
+            base_path = os.path.abspath(".")
 
-    return os.path.join(base_path, relative_path)
+        # Create the full path
+        full_path = os.path.join(base_path, relative_path)
+        
+        # Create the directory if it doesn't exist
+        if os.path.dirname(full_path) and not os.path.exists(os.path.dirname(full_path)):
+            os.makedirs(os.path.dirname(full_path))
+            
+        return full_path
+    except Exception as e:
+        print(f"Error in resource_path: {e}")
+        return os.path.abspath(relative_path)
 
 # Path ke folder Resource
 RESOURCE_DIR = resource_path("Resource")
@@ -55,20 +69,32 @@ class SaveGameBackupApp:
         
         try:
             if os.path.exists(CONFIG_PATH):
-                with open(CONFIG_PATH, "r") as f:
+                with open(CONFIG_PATH, "r", encoding='utf-8') as f:
                     return json.load(f)
+            else:
+                # Create default config file if it doesn't exist
+                with open(CONFIG_PATH, "w", encoding='utf-8') as f:
+                    json.dump(default_config, f, indent=4)
+                print(f"Created new config file at: {CONFIG_PATH}")
+                return default_config
         except Exception as e:
             print(f"Error loading config: {e}")
-            
-        return default_config
+            return default_config
     
     def save_config(self):
         """Save current configuration to file"""
         try:
-            with open(CONFIG_PATH, "w") as f:
+            # Ensure Resource directory exists
+            if not os.path.exists(RESOURCE_DIR):
+                os.makedirs(RESOURCE_DIR)
+                print(f"Created Resource directory at: {RESOURCE_DIR}")
+                
+            with open(CONFIG_PATH, "w", encoding='utf-8') as f:
                 json.dump(self.config, f, indent=4)
+            print(f"Config saved successfully to: {CONFIG_PATH}")
         except Exception as e:
             print(f"Error saving config: {e}")
+            messagebox.showerror("Error", f"Failed to save configuration: {str(e)}")
     
     def create_widgets(self):
         """Create all GUI widgets"""

@@ -4,9 +4,28 @@ import json
 from datetime import datetime
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-from PIL import Image
-import io
 import sys
+import getpass
+
+def get_current_username():
+    """Get current Windows username"""
+    return getpass.getuser()
+
+def replace_username_in_path(path):
+    """Replace username in path with current username"""
+    if not path:
+        return path
+    
+    # Get current username
+    current_username = get_current_username()
+    
+    # Find username in path (assuming Windows path format)
+    parts = path.split('\\')
+    if len(parts) > 2 and parts[1] == 'Users':
+        # Replace the username part
+        parts[2] = current_username
+        return '\\'.join(parts)
+    return path
 
 def resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
@@ -40,7 +59,7 @@ CONFIG_PATH = os.path.join(RESOURCE_DIR, "savegame_config.json")
 if not os.path.exists(ICON_PATH):
     root = tk.Tk()
     root.withdraw()  # Hide main window
-    messagebox.showerror("Error", f"The icon file not detected on: {ICON_PATH}\nAplikasi akan ditutup.")
+    messagebox.showerror("Error", f"The icon file not detected on: {ICON_PATH}\nThe application will be closed.")
     sys.exit(1)
 
 class SaveGameBackupApp:
@@ -48,6 +67,7 @@ class SaveGameBackupApp:
         self.root = root
         self.root.title("Sweet Progress")
         self.root.geometry("600x400")
+        self.root.minsize(600, 400)  # Set minimum window size
         try:
             self.root.iconbitmap(ICON_PATH)
         except Exception as e:
@@ -70,7 +90,21 @@ class SaveGameBackupApp:
         try:
             if os.path.exists(CONFIG_PATH):
                 with open(CONFIG_PATH, "r", encoding='utf-8') as f:
-                    return json.load(f)
+                    config = json.load(f)
+                    
+                # Update paths with current username
+                for game in config["games"]:
+                    game_config = config["games"][game]
+                    game_config["savegame_location"] = replace_username_in_path(game_config["savegame_location"])
+                    game_config["backup_location"] = replace_username_in_path(game_config["backup_location"])
+                
+                # Update last used paths
+                if "last_used" in config:
+                    last_used = config["last_used"]
+                    last_used["savegame_location"] = replace_username_in_path(last_used["savegame_location"])
+                    last_used["backup_location"] = replace_username_in_path(last_used["backup_location"])
+                
+                return config
             else:
                 # Create default config file if it doesn't exist
                 with open(CONFIG_PATH, "w", encoding='utf-8') as f:

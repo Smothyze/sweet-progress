@@ -34,34 +34,6 @@ A user-friendly tool to backup game save files with automatic path remembering f
   - Success/failure notifications
   - Detailed error messages
 
-## How to Use
-
-### Basic Usage
-1. **Enter Game Title**
-   - Type a new game title or select from dropdown
-   - Existing games will auto-fill their paths
-
-2. **Select Paths**
-   - Click "Browse..." to select:
-     - Savegame location (your game's save folder)
-     - Backup location (where to store backups)
-
-3. **Create Backup**
-   - Click "Create Backup" button
-   - View progress in the log area
-   - Receive confirmation when complete
-
-### Advanced Features
-- **Editing Existing Games**
-  - Select from dropdown
-  - Modify paths as needed
-  - New paths are saved automatically
-
-- **Configuration File**
-  - Stored as `savegame_backup_config.json`
-  - Can be edited manually if needed
-  - Located in the same folder as the executable
-
 ### Command Line Version
 For advanced users, the core backup functionality can be called directly:
 
@@ -74,16 +46,6 @@ backup_savegame_with_credit(
     game_name="Your Game Name"
 )
 ```
-
-## Requirements
-- Python 3.8+
-- Windows (for .exe version)
-- tkinter (usually included with Python)
-
-## Installation
-1. Download the latest release
-2. Run `savegame_backup.exe` (Windows)
-   - Or run `python savegame_backup.py` if using source
 
 ## License
 MIT License - See LICENSE file for details

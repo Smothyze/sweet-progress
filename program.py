@@ -27,6 +27,19 @@ def replace_username_in_path(path):
         return '\\'.join(parts)
     return path
 
+def mask_username_in_path(path):
+    """
+    Replace the username in a Windows path with (pc-name).
+    Example: C:\\Users\\decarabia\\... -> C:\\Users\\(pc-name)\\...
+    """
+    if not path:
+        return path
+    parts = path.split('\\')
+    if len(parts) > 2 and parts[1].lower() == 'users':
+        parts[2] = '(pc-name)'
+        return '\\'.join(parts)
+    return path
+
 def resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
     try:
@@ -336,7 +349,7 @@ class SaveGameBackupApp:
                 credit_file.write(f"{backup_time}\n")
                 credit_file.write(f"\n")
                 credit_file.write(f"Savegame Location:\n")
-                credit_file.write(f"{source_folder}\n")
+                credit_file.write(f"{mask_username_in_path(source_folder)}\n")
             self.log(f"Credit file added: {credit_file_path}")
 
         except Exception as e:

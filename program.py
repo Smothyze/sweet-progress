@@ -159,17 +159,31 @@ class SaveGameBackupApp:
         backup_entry.grid(row=2, column=1, sticky=tk.EW, padx=5, pady=5)
         ttk.Button(main_frame, text="Browse...", command=self.browse_backup).grid(row=2, column=2, padx=5)
         
+        # Timestamp option
+        ttk.Label(main_frame, text="Timestamp:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        self.timestamp_option = tk.StringVar(value="Disable")
+        timestamp_frame = ttk.Frame(main_frame)
+        timestamp_frame.grid(row=3, column=1, sticky=tk.W, padx=5, pady=5)
+        ttk.Radiobutton(timestamp_frame, text="Disable", variable=self.timestamp_option, value="Disable").pack(side=tk.LEFT)
+        ttk.Radiobutton(timestamp_frame, text="Enable", variable=self.timestamp_option, value="Enable").pack(side=tk.LEFT, padx=10)
+        
+        # Author
+        ttk.Label(main_frame, text="Author:").grid(row=4, column=0, sticky=tk.W, pady=5)
+        self.author_name = tk.StringVar()
+        author_entry = ttk.Entry(main_frame, textvariable=self.author_name, width=50)
+        author_entry.grid(row=4, column=1, sticky=tk.EW, padx=5, pady=5)
+        
         # Backup Button
-        ttk.Button(main_frame, text="Create Backup", command=self.create_backup).grid(row=3, column=1, pady=20)
+        ttk.Button(main_frame, text="Create Backup", command=self.create_backup).grid(row=5, column=1, pady=20)
         
         # Log Area
-        ttk.Label(main_frame, text="Log:").grid(row=4, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text="Log:").grid(row=6, column=0, sticky=tk.W, pady=5)
         self.log_text = tk.Text(main_frame, height=10, wrap=tk.WORD)
-        self.log_text.grid(row=5, column=0, columnspan=3, sticky=tk.NSEW, pady=5)
+        self.log_text.grid(row=7, column=0, columnspan=3, sticky=tk.NSEW, pady=5)
         
         # Configure grid weights
         main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(5, weight=1)
+        main_frame.rowconfigure(7, weight=1)
         
         # Load last used values if any
         if "last_used" in self.config:
@@ -177,6 +191,7 @@ class SaveGameBackupApp:
             self.game_title.set(last.get("game_title", ""))
             self.savegame_location.set(last.get("savegame_location", ""))
             self.backup_location.set(last.get("backup_location", ""))
+            self.author_name.set(last.get("author", ""))
     
     def on_game_selected(self, event):
         """When a game is selected from dropdown, auto-fill paths"""
@@ -217,6 +232,8 @@ class SaveGameBackupApp:
         game_title = self.game_title.get().strip()
         savegame_location = self.savegame_location.get().strip()
         backup_location = self.backup_location.get().strip()
+        author_name = self.author_name.get().strip()
+        timestamp_option = self.timestamp_option.get()
         
         if not game_title:
             messagebox.showerror("Error", "Please enter a game title")
@@ -240,20 +257,21 @@ class SaveGameBackupApp:
             self.config["last_used"] = {
                 "game_title": game_title,
                 "savegame_location": savegame_location,
-                "backup_location": backup_location
+                "backup_location": backup_location,
+                "author": author_name
             }
             
             self.save_config()
             
             # Perform backup
             self.log(f"Starting backup for {game_title}...")
-            self.backup_savegame_with_credit(savegame_location, backup_location, game_title)
+            self.backup_savegame_with_credit(savegame_location, backup_location, game_title, author_name, timestamp_option)
             messagebox.showinfo("Success", "Backup completed successfully!")
         except Exception as e:
             self.log(f"Error: {str(e)}")
             messagebox.showerror("Error", f"Backup failed: {str(e)}")
     
-    def backup_savegame_with_credit(self, source_folder, backup_directory, game_name):
+    def backup_savegame_with_credit(self, source_folder, backup_directory, game_name, author_name, timestamp_option):
         """
         Backup savegame with credit file containing backup time and date.
 
@@ -261,6 +279,8 @@ class SaveGameBackupApp:
         - source_folder: Location of the savegame folder to backup.
         - backup_directory: Destination folder for the backup.
         - game_name: Game name to create a folder in backup_directory.
+        - author_name: Name of the author for the credit file.
+        - timestamp_option: "Enable" or "Disable" to add timestamp folder.
         """
         try:
             # Validate source_folder exists
@@ -279,12 +299,21 @@ class SaveGameBackupApp:
             if not os.path.exists(game_folder):
                 os.makedirs(game_folder)
                 self.log(f"Created game folder: {game_folder}")
+
+            # Define the base folder for this backup operation
+            backup_base_folder = game_folder
+            if timestamp_option == "Enable":
+                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                backup_base_folder = os.path.join(game_folder, timestamp)
+                # Create timestamped folder
+                os.makedirs(backup_base_folder)
+                self.log(f"Created timestamped folder: {backup_base_folder}")
             
             # Source folder name from original path
             source_folder_name = os.path.basename(source_folder.rstrip("/\\"))
 
             # Destination path for savegame copy
-            destination_folder = os.path.join(game_folder, source_folder_name)
+            destination_folder = os.path.join(backup_base_folder, source_folder_name)
 
             # Copy source folder to destination
             if os.path.exists(destination_folder):
@@ -295,13 +324,13 @@ class SaveGameBackupApp:
             self.log(f"Backup successful! Savegame copied to: {destination_folder}")
 
             # Add credit file with backup time and date
-            credit_file_path = os.path.join(game_folder, "Readme.txt")
+            credit_file_path = os.path.join(backup_base_folder, "Readme.txt")
             backup_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             with open(credit_file_path, "w") as credit_file:
                 credit_file.write(f"Backup savegame for {game_name}.\n")
                 credit_file.write(f"\n")
-                credit_file.write(f"Credit By:\n")
-                credit_file.write(f"Smothy\n")
+                credit_file.write(f"Author:\n")
+                credit_file.write(f"{author_name or 'Smothy'}\n")
                 credit_file.write(f"\n")
                 credit_file.write(f"Update on:\n")
                 credit_file.write(f"{backup_time}\n")

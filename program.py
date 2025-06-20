@@ -157,6 +157,8 @@ class SaveGameBackupApp:
         self.game_title_combo['values'] = list(self.config["games"].keys())
         self.game_title_combo.bind("<<ComboboxSelected>>", self.on_game_selected)
         self.game_title_combo.bind("<Return>", self.on_game_manual_entry)
+        # Tombol List di samping dropdown
+        ttk.Button(main_frame, text="List", command=self.show_game_list_window).grid(row=0, column=2, padx=5)
         
         # Savegame Location
         ttk.Label(main_frame, text="Savegame Location:").grid(row=1, column=0, sticky=tk.W, pady=5)
@@ -354,6 +356,59 @@ class SaveGameBackupApp:
 
         except Exception as e:
             raise e
+
+    def show_game_list_window(self):
+        """Show a new window with the list of game titles, Select and Delete buttons"""
+        win = tk.Toplevel(self.root)
+        win.title("Game Title List")
+        win.geometry("350x300")
+        win.transient(self.root)
+        win.grab_set()
+        try:
+            win.iconbitmap(ICON_PATH)
+        except Exception as e:
+            print(f"Error loading icon for list window: {e}")
+        win.resizable(False, False)
+
+        # Listbox
+        listbox = tk.Listbox(win, exportselection=False)
+        listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        for game in self.config["games"].keys():
+            listbox.insert(tk.END, game)
+
+        # Button frame
+        btn_frame = ttk.Frame(win)
+        btn_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        def select_game():
+            sel = listbox.curselection()
+            if sel:
+                game = listbox.get(sel[0])
+                self.game_title.set(game)
+                self.on_game_selected(None)
+                win.destroy()
+
+        def delete_game():
+            sel = listbox.curselection()
+            if sel:
+                game = listbox.get(sel[0])
+                if messagebox.askyesno("Confirmation", f"Delete game title '{game}' from the list?"):
+                    del self.config["games"][game]
+                    self.save_config()
+                    listbox.delete(sel[0])
+                    # Update main combobox
+                    self.game_title_combo['values'] = list(self.config["games"].keys())
+                    # If the deleted game is currently selected, clear the fields
+                    if self.game_title.get() == game:
+                        self.game_title.set("")
+                        self.savegame_location.set("")
+                        self.backup_location.set("")
+                    # Add log
+                    self.log(f"Game '{game}' has been deleted from the list.")
+
+        ttk.Button(btn_frame, text="Select", command=select_game).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Delete", command=delete_game).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Close", command=win.destroy).pack(side=tk.RIGHT, padx=5)
 
 def main():
     root = tk.Tk()

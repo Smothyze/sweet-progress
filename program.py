@@ -34,7 +34,17 @@ def mask_username_in_path(path):
     """
     if not path:
         return path
-    parts = path.split('\\')
+    try:
+        user_profile = os.environ.get('USERPROFILE')
+        if user_profile and path.lower().startswith(user_profile.lower()):
+            users_folder = os.path.dirname(user_profile)
+            rest_of_path = path[len(user_profile):]
+            return os.path.join(users_folder, '(pc-name)') + rest_of_path
+    except Exception:
+        pass  # Fallback to original logic on error
+
+    # Original logic as a fallback
+    parts = path.replace('/', '\\').split('\\')
     if len(parts) > 2 and parts[1].lower() == 'users':
         parts[2] = '(pc-name)'
         return '\\'.join(parts)

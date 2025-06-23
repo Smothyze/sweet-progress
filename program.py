@@ -50,6 +50,25 @@ def mask_username_in_path(path):
         return '\\'.join(parts)
     return path
 
+def mask_steamid_in_path(path):
+    """
+    Jika path mengandung Steam/userdata/<steamid>/, ganti steamid menjadi (steam-id).
+    Contoh: C:/Program Files (x86)/Steam/userdata/1315809618/582010/remote
+    menjadi  C:/Program Files (x86)/Steam/userdata/(steam-id)/582010/remote
+    """
+    if not path:
+        return path
+    # Normalize path separator
+    norm_path = path.replace('/', '\\')
+    parts = norm_path.split('\\')
+    for i in range(len(parts) - 2):
+        if parts[i].lower() == 'steam' and parts[i+1].lower() == 'userdata':
+            # Ganti steamid (harus berupa angka)
+            if parts[i+2].isdigit():
+                parts[i+2] = '(steam-id)'
+                return '\\'.join(parts)
+    return path
+
 def resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
     try:
@@ -164,7 +183,20 @@ class SaveGameBackupApp:
         self.game_title = tk.StringVar()
         self.game_title_combo = ttk.Combobox(main_frame, textvariable=self.game_title)
         self.game_title_combo.grid(row=0, column=1, sticky=tk.EW, padx=5, pady=5)
-        self.game_title_combo['values'] = list(self.config["games"].keys())
+        # Hanya tampilkan 3 judul game terakhir (recent)
+        all_games = list(self.config["games"].keys())
+        recent_games = []
+        if "last_used" in self.config and self.config["last_used"].get("game_title"):
+            last = self.config["last_used"]
+            if last["game_title"] in all_games:
+                recent_games.append(last["game_title"])
+        # Tambahkan judul lain jika kurang dari 3
+        for g in all_games:
+            if g not in recent_games:
+                recent_games.append(g)
+            if len(recent_games) == 3:
+                break
+        self.game_title_combo['values'] = recent_games
         self.game_title_combo.bind("<<ComboboxSelected>>", self.on_game_selected)
         self.game_title_combo.bind("<Return>", self.on_game_manual_entry)
         # Tombol List di samping dropdown
@@ -361,7 +393,10 @@ class SaveGameBackupApp:
                 credit_file.write(f"{backup_time}\n")
                 credit_file.write(f"\n")
                 credit_file.write(f"Savegame Location:\n")
-                credit_file.write(f"{mask_username_in_path(source_folder)}\n")
+                # Mask steamid jika ada, lalu mask username
+                masked_path = mask_steamid_in_path(source_folder)
+                masked_path = mask_username_in_path(masked_path)
+                credit_file.write(f"{masked_path}\n")
             self.log(f"Credit file added: {credit_file_path}")
 
         except Exception as e:
@@ -383,7 +418,9 @@ class SaveGameBackupApp:
         # Listbox
         listbox = tk.Listbox(win, exportselection=False)
         listbox.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        for game in self.config["games"].keys():
+        # Urutkan game secara abjad
+        sorted_games = sorted(self.config["games"].keys(), key=lambda x: x.lower())
+        for game in sorted_games:
             listbox.insert(tk.END, game)
 
         # Button frame

@@ -167,12 +167,16 @@ class SaveGameBackupApp:
         self.savegame_location = tk.StringVar()
         savegame_entry = ttk.Entry(main_frame, textvariable=self.savegame_location, width=50)
         savegame_entry.grid(row=1, column=1, sticky=tk.EW, padx=5, pady=5)
+        savegame_entry.bind('<FocusOut>', lambda e: self.log(f"Savegame location updated: {self.savegame_location.get()}"))
+        savegame_entry.bind('<Return>', lambda e: self.log(f"Savegame location updated: {self.savegame_location.get()}"))
         ttk.Button(main_frame, text="Browse...", command=self.browse_savegame).grid(row=1, column=2, padx=5)
         
         ttk.Label(main_frame, text="Backup Location:").grid(row=2, column=0, sticky=tk.W, pady=5)
         self.backup_location = tk.StringVar()
         backup_entry = ttk.Entry(main_frame, textvariable=self.backup_location, width=50)
         backup_entry.grid(row=2, column=1, sticky=tk.EW, padx=5, pady=5)
+        backup_entry.bind('<FocusOut>', lambda e: self.log(f"Backup location updated: {self.backup_location.get()}"))
+        backup_entry.bind('<Return>', lambda e: self.log(f"Backup location updated: {self.backup_location.get()}"))
         ttk.Button(main_frame, text="Browse...", command=self.browse_backup).grid(row=2, column=2, padx=5)
         
         ttk.Label(main_frame, text="Timestamp:").grid(row=3, column=0, sticky=tk.W, pady=5)
@@ -182,10 +186,7 @@ class SaveGameBackupApp:
         ttk.Radiobutton(timestamp_frame, text="Disable", variable=self.timestamp_option, value="Disable").pack(side=tk.LEFT)
         ttk.Radiobutton(timestamp_frame, text="Enable", variable=self.timestamp_option, value="Enable").pack(side=tk.LEFT, padx=10)
         
-        ttk.Label(main_frame, text="Author:").grid(row=4, column=0, sticky=tk.W, pady=5)
-        self.author_name = tk.StringVar()
-        author_entry = ttk.Entry(main_frame, textvariable=self.author_name, width=50)
-        author_entry.grid(row=4, column=1, sticky=tk.EW, padx=5, pady=5)
+        ttk.Button(main_frame, text="Credit Setting", command=self.open_credit_setting).grid(row=4, column=1, sticky=tk.W, padx=5, pady=5)
         
         ttk.Button(main_frame, text="Create Backup", command=self.create_backup).grid(row=5, column=1, pady=20)
         
@@ -201,7 +202,6 @@ class SaveGameBackupApp:
             self.game_title.set(last.get("game_title", ""))
             self.savegame_location.set(last.get("savegame_location", ""))
             self.backup_location.set(last.get("backup_location", ""))
-            self.author_name.set(last.get("author", ""))
     
     def on_game_selected(self, event):
         game = self.game_title.get()
@@ -209,6 +209,7 @@ class SaveGameBackupApp:
             paths = self.config["games"][game]
             self.savegame_location.set(paths.get("savegame_location", ""))
             self.backup_location.set(paths.get("backup_location", ""))
+            self.log(f"Game selected: {game}")
     
     def on_game_manual_entry(self, event):
         game = self.game_title.get()
@@ -221,11 +222,13 @@ class SaveGameBackupApp:
         folder = filedialog.askdirectory()
         if folder:
             self.savegame_location.set(folder)
+            self.log(f"Savegame location updated: {folder}")
     
     def browse_backup(self):
         folder = filedialog.askdirectory()
         if folder:
             self.backup_location.set(folder)
+            self.log(f"Backup location updated: {folder}")
     
     def log(self, message):
         self.log_text.insert(tk.END, message + "\n")
@@ -236,8 +239,6 @@ class SaveGameBackupApp:
         game_title = self.game_title.get().strip()
         savegame_location = self.savegame_location.get().strip()
         backup_location = self.backup_location.get().strip()
-        author_name = self.author_name.get().strip()
-        timestamp_option = self.timestamp_option.get()
         
         if not game_title:
             messagebox.showerror("Error", "Please enter a game title")
@@ -260,20 +261,19 @@ class SaveGameBackupApp:
             self.config["last_used"] = {
                 "game_title": game_title,
                 "savegame_location": savegame_location,
-                "backup_location": backup_location,
-                "author": author_name
+                "backup_location": backup_location
             }
             
             self.save_config()
             
             self.log(f"Starting backup for {game_title}...")
-            self.backup_savegame_with_credit(savegame_location, backup_location, game_title, author_name, timestamp_option)
+            self.backup_savegame_with_credit(savegame_location, backup_location, game_title)
             messagebox.showinfo("Success", "Backup completed successfully!")
         except Exception as e:
             self.log(f"Error: {str(e)}")
             messagebox.showerror("Error", f"Backup failed: {str(e)}")
     
-    def backup_savegame_with_credit(self, source_folder, backup_directory, game_name, author_name, timestamp_option):
+    def backup_savegame_with_credit(self, source_folder, backup_directory, game_name):
         try:
             if not os.path.exists(source_folder):
                 raise FileNotFoundError(f"Source savegame folder not found: {source_folder}")
@@ -289,7 +289,7 @@ class SaveGameBackupApp:
                 self.log(f"Created game folder: {game_folder}")
 
             backup_base_folder = game_folder
-            if timestamp_option == "Enable":
+            if self.timestamp_option.get() == "Enable":
                 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
                 backup_base_folder = os.path.join(game_folder, timestamp)
                 os.makedirs(backup_base_folder)
@@ -308,11 +308,15 @@ class SaveGameBackupApp:
 
             credit_file_path = os.path.join(backup_base_folder, "Readme.txt")
             backup_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            author = self.config.get("last_used", {}).get("author", "").strip() or "Smothy"
+            note = getattr(self, '_credit_note', '').strip()
             with open(credit_file_path, "w") as credit_file:
                 credit_file.write(f"Backup savegame for {game_name}.\n")
                 credit_file.write(f"\n")
                 credit_file.write(f"Author:\n")
-                credit_file.write(f"{author_name or 'Smothy'}\n")
+                credit_file.write(f"{author}\n")
+                if note:
+                    credit_file.write(f"\nNote:\n{note}\n")
                 credit_file.write(f"\n")
                 credit_file.write(f"Update on:\n")
                 credit_file.write(f"{backup_time}\n")
@@ -353,6 +357,7 @@ class SaveGameBackupApp:
                 game = listbox.get(sel[0])
                 self.game_title.set(game)
                 self.on_game_selected(None)
+                self.log(f"Game selected from list: {game}")
                 win.destroy()
 
         def delete_game():
@@ -373,6 +378,51 @@ class SaveGameBackupApp:
         ttk.Button(btn_frame, text="Select", command=select_game).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="Delete", command=delete_game).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="Close", command=win.destroy).pack(side=tk.RIGHT, padx=5)
+
+    def open_credit_setting(self):
+        credit_win = tk.Toplevel(self.root)
+        credit_win.title("Credit Setting")
+        credit_win.geometry("400x260")
+        credit_win.transient(self.root)
+        credit_win.grab_set()
+        try:
+            credit_win.iconbitmap(ICON_PATH)
+        except Exception as e:
+            print(f"Error loading icon for credit window: {e}")
+        credit_win.resizable(False, False)
+
+        # Author
+        ttk.Label(credit_win, text="Author:").grid(row=0, column=0, sticky=tk.W, pady=(16, 8), padx=16)
+        author_var = tk.StringVar(value=self.config.get("last_used", {}).get("author", ""))
+        author_entry = ttk.Entry(credit_win, textvariable=author_var, width=36)
+        author_entry.grid(row=0, column=1, sticky=tk.EW, pady=(16, 8), padx=(0, 16))
+
+        # Note (opsional, tidak disimpan di config)
+        ttk.Label(credit_win, text="Note (optional):").grid(row=1, column=0, sticky=tk.NW, pady=(0, 8), padx=16)
+        note_text = tk.Text(credit_win, width=36, height=5, wrap=tk.WORD)
+        note_text.grid(row=1, column=1, sticky=tk.EW, pady=(0, 8), padx=(0, 16))
+        if hasattr(self, '_credit_note'):
+            note_text.insert(tk.END, self._credit_note)
+
+        # Frame untuk tombol
+        btn_frame = ttk.Frame(credit_win)
+        btn_frame.grid(row=2, column=0, columnspan=2, pady=(8, 16), padx=16, sticky=tk.E)
+
+        def save_credit():
+            author = author_var.get().strip()
+            if "last_used" not in self.config:
+                self.config["last_used"] = {}
+            self.config["last_used"]["author"] = author
+            self.save_config()
+            self._credit_note = note_text.get("1.0", tk.END).strip()
+            self.log("Credit setting saved (Author dan Note).")
+            credit_win.destroy()
+
+        ttk.Button(btn_frame, text="Cancel", command=credit_win.destroy).pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(btn_frame, text="Save", command=save_credit).pack(side=tk.LEFT)
+
+        # Buat kolom 1 (input) bisa melebar
+        credit_win.columnconfigure(1, weight=1)
 
 def main():
     root = tk.Tk()

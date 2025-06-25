@@ -135,6 +135,7 @@ class SaveGameBackupApp:
             with open(CONFIG_PATH, "w", encoding='utf-8') as f:
                 json.dump(self.config, f, indent=4)
             print(f"Config saved successfully to: {CONFIG_PATH}")
+            self.validate_list_button()  # Update List button state after saving config
         except Exception as e:
             print(f"Error saving config: {e}")
             messagebox.showerror("Error", f"Failed to save configuration: {str(e)}")
@@ -161,7 +162,8 @@ class SaveGameBackupApp:
         self.game_title_combo['values'] = recent_games
         self.game_title_combo.bind("<<ComboboxSelected>>", self.on_game_selected)
         self.game_title_combo.bind("<Return>", self.on_game_manual_entry)
-        ttk.Button(main_frame, text="List", command=self.show_game_list_window).grid(row=0, column=2, padx=5)
+        self.list_btn = ttk.Button(main_frame, text="List", command=self.show_game_list_window)
+        self.list_btn.grid(row=0, column=2, padx=5)
         
         ttk.Label(main_frame, text="Savegame Location:").grid(row=1, column=0, sticky=tk.W, pady=5)
         self.savegame_location = tk.StringVar()
@@ -188,8 +190,6 @@ class SaveGameBackupApp:
         
         ttk.Button(main_frame, text="Credit Setting", command=self.open_credit_setting).grid(row=4, column=1, sticky=tk.W, padx=5, pady=5)
         
-        ttk.Button(main_frame, text="Create Backup", command=self.create_backup).grid(row=5, column=1, pady=20)
-        
         ttk.Label(main_frame, text="Log:").grid(row=6, column=0, sticky=tk.W, pady=5)
         self.log_text = tk.Text(main_frame, height=10, wrap=tk.WORD)
         self.log_text.grid(row=7, column=0, columnspan=3, sticky=tk.NSEW, pady=5)
@@ -202,6 +202,16 @@ class SaveGameBackupApp:
             self.game_title.set(last.get("game_title", ""))
             self.savegame_location.set(last.get("savegame_location", ""))
             self.backup_location.set(last.get("backup_location", ""))
+        
+        # Tombol Create Backup
+        self.create_backup_btn = ttk.Button(main_frame, text="Create Backup", command=self.create_backup)
+        self.create_backup_btn.grid(row=5, column=1, pady=20)
+        self.validate_inputs()  # Set initial state
+        self.validate_list_button()  # Set initial state for List button
+        # Pasang trace pada input
+        self.game_title.trace_add('write', lambda *args: self.validate_inputs())
+        self.savegame_location.trace_add('write', lambda *args: self.validate_inputs())
+        self.backup_location.trace_add('write', lambda *args: self.validate_inputs())
     
     def on_game_selected(self, event):
         game = self.game_title.get()
@@ -423,6 +433,21 @@ class SaveGameBackupApp:
 
         # Buat kolom 1 (input) bisa melebar
         credit_win.columnconfigure(1, weight=1)
+
+    def validate_inputs(self):
+        game_title = self.game_title.get().strip()
+        savegame_location = self.savegame_location.get().strip()
+        backup_location = self.backup_location.get().strip()
+        if game_title and savegame_location and backup_location:
+            self.create_backup_btn.state(["!disabled"])
+        else:
+            self.create_backup_btn.state(["disabled"])
+
+    def validate_list_button(self):
+        if self.config["games"]:
+            self.list_btn.state(["!disabled"])
+        else:
+            self.list_btn.state(["disabled"])
 
 def main():
     root = tk.Tk()

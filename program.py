@@ -564,10 +564,13 @@ class SaveGameBackupApp:
         h_scrollbar = ttk.Scrollbar(table_frame, orient=tk.HORIZONTAL, command=tree.xview)
         tree.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
         
-        # Pack treeview and scrollbars
-        tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        # Grid treeview and scrollbars to avoid overlap
+        tree.grid(row=0, column=0, sticky="nsew")
+        v_scrollbar.grid(row=0, column=1, sticky="ns")
+        h_scrollbar.grid(row=1, column=0, sticky="ew")
+        # Configure grid weights so treeview expands
+        table_frame.rowconfigure(0, weight=1)
+        table_frame.columnconfigure(0, weight=1)
 
         def refresh_table():
             """Refresh the table based on current sort option"""
@@ -634,17 +637,29 @@ class SaveGameBackupApp:
                     except Exception as e:
                         messagebox.showerror("Error", f"Failed to delete game: {str(e)}")
 
-        # Bind double-click to select game
-        tree.bind("<Double-1>", lambda e: select_game())
-
-        ttk.Button(btn_frame, text="Select", command=select_game).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Delete", command=delete_game).pack(side=tk.LEFT, padx=5)
+        select_btn = ttk.Button(btn_frame, text="Select", command=select_game, state=tk.DISABLED)
+        delete_btn = ttk.Button(btn_frame, text="Delete", command=delete_game, state=tk.DISABLED)
+        select_btn.pack(side=tk.LEFT, padx=5)
+        delete_btn.pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="Close", command=win.destroy).pack(side=tk.RIGHT, padx=5)
+
+        def update_buttons_state(event=None):
+            selection = tree.selection()
+            if selection:
+                select_btn.state(["!disabled"])
+                delete_btn.state(["!disabled"])
+            else:
+                select_btn.state(["disabled"])
+                delete_btn.state(["disabled"])
+
+        tree.bind("<<TreeviewSelect>>", update_buttons_state)
+        # Pastikan tombol dalam keadaan benar saat awal
+        update_buttons_state()
 
     def open_credit_setting(self):
         credit_win = tk.Toplevel(self.root)
         credit_win.title("Credit Setting")
-        credit_win.geometry("400x260")
+        credit_win.geometry("400x220")
         credit_win.transient(self.root)
         credit_win.grab_set()
         try:
@@ -654,22 +669,45 @@ class SaveGameBackupApp:
             print(f"Error loading icon for credit window: {e}")
         credit_win.resizable(False, False)
 
+        # Title
+        title_label = ttk.Label(credit_win, text="Credit Information", font=("Segoe UI", 12, "bold"))
+        title_label.grid(row=0, column=0, columnspan=2, pady=(16, 4), padx=16, sticky="w")
+
+        # Separator
+        sep = ttk.Separator(credit_win, orient="horizontal")
+        sep.grid(row=1, column=0, columnspan=2, sticky="ew", padx=16, pady=(0, 10))
+
         # Author
-        ttk.Label(credit_win, text="Author:").grid(row=0, column=0, sticky=tk.W, pady=(16, 8), padx=16)
+        ttk.Label(credit_win, text="Author:").grid(row=2, column=0, sticky=tk.W, pady=(0, 8), padx=16)
         author_var = tk.StringVar(value=self.config.get("last_used", {}).get("author", ""))
         author_entry = ttk.Entry(credit_win, textvariable=author_var, width=36)
-        author_entry.grid(row=0, column=1, sticky=tk.EW, pady=(16, 8), padx=(0, 16))
+        author_entry.grid(row=2, column=1, sticky=tk.EW, pady=(0, 8), padx=(0, 16))
 
         # Note (opsional, tidak disimpan di config)
-        ttk.Label(credit_win, text="Note (optional):").grid(row=1, column=0, sticky=tk.NW, pady=(0, 8), padx=16)
+        ttk.Label(credit_win, text="Note (optional):").grid(row=3, column=0, sticky=tk.NW, pady=(0, 8), padx=16)
         note_text = tk.Text(credit_win, width=36, height=5, wrap=tk.WORD)
-        note_text.grid(row=1, column=1, sticky=tk.EW, pady=(0, 8), padx=(0, 16))
+        note_text.grid(row=3, column=1, sticky=tk.EW, pady=(0, 8), padx=(0, 16))
         if hasattr(self, '_credit_note'):
             note_text.insert(tk.END, self._credit_note)
 
         # Frame untuk tombol
         btn_frame = ttk.Frame(credit_win)
-        btn_frame.grid(row=2, column=0, columnspan=2, pady=(8, 16), padx=16, sticky=tk.E)
+        btn_frame.grid(row=4, column=0, columnspan=2, pady=(8, 16), padx=16, sticky=tk.E)
+
+        save_btn = ttk.Button(btn_frame, text="Save", state=tk.DISABLED)
+        save_btn.pack(side=tk.RIGHT, padx=(8, 0))
+        ttk.Button(btn_frame, text="Cancel", command=credit_win.destroy).pack(side=tk.RIGHT, padx=(0, 8))
+
+        def validate_save_btn(*args):
+            author = author_var.get().strip()
+            note = note_text.get("1.0", tk.END).strip()
+            if author or note:
+                save_btn.state(["!disabled"])
+            else:
+                save_btn.state(["disabled"])
+
+        author_var.trace_add("write", validate_save_btn)
+        note_text.bind("<KeyRelease>", lambda e: validate_save_btn())
 
         def save_credit():
             try:
@@ -684,8 +722,9 @@ class SaveGameBackupApp:
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to save credit settings: {str(e)}")
 
-        ttk.Button(btn_frame, text="Cancel", command=credit_win.destroy).pack(side=tk.LEFT, padx=(0, 8))
-        ttk.Button(btn_frame, text="Save", command=save_credit).pack(side=tk.LEFT)
+        save_btn.config(command=save_credit)
+        # Inisialisasi status tombol
+        validate_save_btn()
 
         # Buat kolom 1 (input) bisa melebar
         credit_win.columnconfigure(1, weight=1)

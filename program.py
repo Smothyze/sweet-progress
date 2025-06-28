@@ -75,6 +75,86 @@ def mask_steamid_in_path(path):
                 return os.sep.join(parts)
     return path
 
+def detect_game_directory(savegame_path):
+    """
+    Detect if savegame is inside a game directory and return game directory info
+    Returns: (is_inside_game, game_dir, relative_path) or (False, None, None)
+    """
+    if not savegame_path:
+        return False, None, None
+    
+    try:
+        norm_path = normalize_path(savegame_path)
+        parts = norm_path.split(os.sep)
+        
+        # Look for game directory from savegame path upwards
+        for i in range(len(parts) - 1, 0, -1):
+            potential_game_dir = os.sep.join(parts[:i+1])
+            
+            if os.path.exists(potential_game_dir):
+                # Look for executable files in this directory
+                try:
+                    files = os.listdir(potential_game_dir)
+                    for file in files:
+                        if file.lower().endswith('.exe'):
+                            # Found an executable, this is likely a game directory
+                            game_dir = os.sep.join(parts[:i+1])
+                            relative_path = os.sep.join(parts[i+1:])
+                            return True, game_dir, relative_path
+                except (PermissionError, OSError):
+                    continue
+                
+                # Also check for common game files
+                game_files = ['game.exe', 'launcher.exe', 'start.exe', 'game.py', 'main.py']
+                for file in game_files:
+                    if os.path.exists(os.path.join(potential_game_dir, file)):
+                        game_dir = os.sep.join(parts[:i+1])
+                        relative_path = os.sep.join(parts[i+1:])
+                        return True, game_dir, relative_path
+                
+                # Check for common game directories that indicate this is a game folder
+                game_dirs = ['game', 'data', 'assets', 'content', 'saves', 'save']
+                for dir_name in game_dirs:
+                    if os.path.exists(os.path.join(potential_game_dir, dir_name)):
+                        # Additional check: if this directory contains an .exe file, it's likely a game
+                        try:
+                            sub_files = os.listdir(potential_game_dir)
+                            for sub_file in sub_files:
+                                if sub_file.lower().endswith('.exe'):
+                                    game_dir = os.sep.join(parts[:i+1])
+                                    relative_path = os.sep.join(parts[i+1:])
+                                    return True, game_dir, relative_path
+                        except (PermissionError, OSError):
+                            continue
+        
+        return False, None, None
+        
+    except Exception:
+        return False, None, None
+
+def mask_game_path_in_savegame_location(savegame_path, preference="Auto"):
+    """
+    Mask game directory path in savegame location for sharing
+    Returns masked path that can be used by other users
+    
+    Args:
+        savegame_path: The savegame path to mask
+        preference: "Auto", "Game Path", or "Standard"
+    """
+    if not savegame_path:
+        return savegame_path
+    
+    is_inside_game, game_dir, relative_path = detect_game_directory(savegame_path)
+    
+    if preference == "Game Path" or (preference == "Auto" and is_inside_game and relative_path):
+        # Return path with consistent placeholder
+        return f"(path-to-game)/{relative_path}"
+    else:
+        # Use existing masking for non-game paths or when Standard is selected
+        masked_path = mask_steamid_in_path(savegame_path)
+        masked_path = mask_username_in_path(masked_path)
+        return masked_path
+
 def resource_path(relative_path):
     try:
         if getattr(sys, 'frozen', False):
@@ -130,8 +210,8 @@ class SaveGameBackupApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Sweet Progress")
-        self.root.geometry("600x400")
-        self.root.minsize(600, 400)
+        self.root.geometry("600x500")
+        self.root.minsize(600, 500)
         
         # Check icon file existence safely
         if os.path.exists(ICON_PATH):
@@ -156,7 +236,11 @@ class SaveGameBackupApp:
         default_config = {
             "games": {},
             "last_used": {},
-            "backup_history": {}  # Add backup history to track timestamps
+            "backup_history": {},  # Add backup history to track timestamps
+            "preferences": {
+                "path_display": "Auto",
+                "timestamp_option": "Disable"
+            }
         }
         
         try:
@@ -174,6 +258,11 @@ class SaveGameBackupApp:
                     config["last_used"] = {}
                 if "backup_history" not in config:
                     config["backup_history"] = {}
+                if "preferences" not in config:
+                    config["preferences"] = {
+                        "path_display": "Auto",
+                        "timestamp_option": "Disable"
+                    }
                     
                 for game in config["games"]:
                     game_config = config["games"][game]
@@ -230,6 +319,7 @@ class SaveGameBackupApp:
         self.list_btn = ttk.Button(main_frame, text="List", command=self.show_game_list_window)
         self.list_btn.grid(row=0, column=2, padx=5)
         
+        # Savegame Location
         ttk.Label(main_frame, text="Savegame Location:").grid(row=1, column=0, sticky=tk.W, pady=5)
         self.savegame_location = tk.StringVar()
         savegame_entry = ttk.Entry(main_frame, textvariable=self.savegame_location, width=50)
@@ -238,35 +328,62 @@ class SaveGameBackupApp:
         savegame_entry.bind('<Return>', lambda e: self.log(f"Savegame location updated: {self.savegame_location.get()}"))
         ttk.Button(main_frame, text="Browse...", command=self.browse_savegame).grid(row=1, column=2, padx=5)
         
-        ttk.Label(main_frame, text="Backup Location:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        # Game directory detection info - moved to separate row
+        self.game_dir_info = tk.StringVar()
+        self.game_dir_label = ttk.Label(main_frame, textvariable=self.game_dir_info, foreground="blue", font=("Segoe UI", 8))
+        self.game_dir_label.grid(row=2, column=1, columnspan=3, sticky=tk.W, padx=5, pady=(0, 5))
+        
+        # Game directory action info - second line
+        self.game_dir_action = tk.StringVar()
+        self.game_dir_action_label = ttk.Label(main_frame, textvariable=self.game_dir_action, foreground="green", font=("Segoe UI", 8))
+        self.game_dir_action_label.grid(row=3, column=1, columnspan=3, sticky=tk.W, padx=5, pady=(0, 5))
+        
+        # Path Display & Preview in one row - positioned below Savegame Location
+        ttk.Label(main_frame, text="Path Display:").grid(row=4, column=0, sticky=tk.W, pady=5)
+        self.path_display_option = tk.StringVar(value="Auto")
+        path_display_frame = ttk.Frame(main_frame)
+        path_display_frame.grid(row=4, column=1, sticky=tk.W, padx=5, pady=5)
+        ttk.Radiobutton(path_display_frame, text="Auto", variable=self.path_display_option, value="Auto").pack(side=tk.LEFT)
+        ttk.Radiobutton(path_display_frame, text="Game Path", variable=self.path_display_option, value="Game Path").pack(side=tk.LEFT, padx=10)
+        ttk.Radiobutton(path_display_frame, text="Standard", variable=self.path_display_option, value="Standard").pack(side=tk.LEFT, padx=10)
+        ttk.Button(main_frame, text="Preview", command=self.show_path_preview).grid(row=4, column=2, padx=5)
+        
+        # Help text for Path Display
+        help_text = "Auto: Smart detection | Game Path: Use (path-to-game) | Standard: Use full path with masking"
+        help_label = ttk.Label(main_frame, text=help_text, foreground="gray", font=("Segoe UI", 7))
+        help_label.grid(row=5, column=1, columnspan=3, sticky=tk.W, padx=5, pady=(0, 5))
+        
+        # Backup Location
+        ttk.Label(main_frame, text="Backup Location:").grid(row=6, column=0, sticky=tk.W, pady=5)
         self.backup_location = tk.StringVar()
         backup_entry = ttk.Entry(main_frame, textvariable=self.backup_location, width=50)
-        backup_entry.grid(row=2, column=1, sticky=tk.EW, padx=5, pady=5)
+        backup_entry.grid(row=6, column=1, sticky=tk.EW, padx=5, pady=5)
         backup_entry.bind('<FocusOut>', lambda e: self.log(f"Backup location updated: {self.backup_location.get()}"))
         backup_entry.bind('<Return>', lambda e: self.log(f"Backup location updated: {self.backup_location.get()}"))
-        ttk.Button(main_frame, text="Browse...", command=self.browse_backup).grid(row=2, column=2, padx=5)
+        ttk.Button(main_frame, text="Browse...", command=self.browse_backup).grid(row=6, column=2, padx=5)
         
-        ttk.Label(main_frame, text="Timestamp:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        # Timestamp
+        ttk.Label(main_frame, text="Timestamp:").grid(row=7, column=0, sticky=tk.W, pady=5)
         self.timestamp_option = tk.StringVar(value="Disable")
         timestamp_frame = ttk.Frame(main_frame)
-        timestamp_frame.grid(row=3, column=1, sticky=tk.W, padx=5, pady=5)
+        timestamp_frame.grid(row=7, column=1, sticky=tk.W, padx=5, pady=5)
         ttk.Radiobutton(timestamp_frame, text="Disable", variable=self.timestamp_option, value="Disable").pack(side=tk.LEFT)
         ttk.Radiobutton(timestamp_frame, text="Enable", variable=self.timestamp_option, value="Enable").pack(side=tk.LEFT, padx=10)
         
-        ttk.Button(main_frame, text="Credit Setting", command=self.open_credit_setting).grid(row=4, column=1, sticky=tk.W, padx=5, pady=5)
+        ttk.Button(main_frame, text="Credit Setting", command=self.open_credit_setting).grid(row=8, column=1, sticky=tk.W, padx=5, pady=5)
         
         # Progress bar
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(main_frame, variable=self.progress_var, maximum=100)
-        self.progress_bar.grid(row=5, column=0, columnspan=3, sticky=tk.EW, padx=5, pady=5)
+        self.progress_bar.grid(row=9, column=0, columnspan=3, sticky=tk.EW, padx=5, pady=5)
         self.progress_bar.grid_remove()  # Hidden by default
         
-        ttk.Label(main_frame, text="Log:").grid(row=6, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text="Log:").grid(row=10, column=0, sticky=tk.W, pady=5)
         self.log_text = tk.Text(main_frame, height=10, wrap=tk.WORD)
-        self.log_text.grid(row=7, column=0, columnspan=3, sticky=tk.NSEW, pady=5)
+        self.log_text.grid(row=11, column=0, columnspan=3, sticky=tk.NSEW, pady=5)
         
         main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(7, weight=1)
+        main_frame.rowconfigure(11, weight=1)
         
         if "last_used" in self.config:
             last = self.config["last_used"]
@@ -274,15 +391,28 @@ class SaveGameBackupApp:
             self.savegame_location.set(last.get("savegame_location", ""))
             self.backup_location.set(last.get("backup_location", ""))
         
+        # Load preferences
+        self.load_preferences()
+        
         # Tombol Create Backup
         self.create_backup_btn = ttk.Button(main_frame, text="Create Backup", command=self.create_backup)
-        self.create_backup_btn.grid(row=8, column=1, pady=20)
+        self.create_backup_btn.grid(row=12, column=1, pady=20)
         self.validate_inputs()  # Set initial state
         self.validate_list_button()  # Set initial state for List button
+        
+        # Update game directory info initially
+        self.update_game_directory_info()
+        
         # Pasang trace pada input
         self.game_title.trace_add('write', lambda *args: self.validate_inputs())
         self.savegame_location.trace_add('write', lambda *args: self.validate_inputs())
+        self.savegame_location.trace_add('write', lambda *args: self.update_game_directory_info())
         self.backup_location.trace_add('write', lambda *args: self.validate_inputs())
+        
+        # Save preferences when changed
+        self.path_display_option.trace_add('write', lambda *args: self.save_preferences())
+        self.path_display_option.trace_add('write', lambda *args: self.update_game_directory_info())
+        self.timestamp_option.trace_add('write', lambda *args: self.save_preferences())
     
     def on_game_selected(self, event):
         game = self.game_title.get()
@@ -477,8 +607,7 @@ class SaveGameBackupApp:
                     credit_file.write(f"{backup_time}\n")
                     credit_file.write(f"\n")
                     credit_file.write(f"Savegame Location:\n")
-                    masked_path = mask_steamid_in_path(source_folder)
-                    masked_path = mask_username_in_path(masked_path)
+                    masked_path = mask_game_path_in_savegame_location(source_folder, self.path_display_option.get())
                     credit_file.write(f"{masked_path}\n")
                 self.log(f"Credit file added: {credit_file_path}")
             except Exception as e:
@@ -748,6 +877,179 @@ class SaveGameBackupApp:
         """Update dropdown values with recent games (limit to 5 items)"""
         recent_games = self.get_recent_games(5)
         self.game_title_combo['values'] = recent_games
+
+    def update_game_directory_info(self):
+        """Update the game directory detection info display"""
+        savegame_location = self.savegame_location.get().strip()
+        if savegame_location:
+            is_inside_game, game_dir, relative_path = detect_game_directory(savegame_location)
+            preference = self.path_display_option.get()
+            
+            if is_inside_game and relative_path:
+                game_name = os.path.basename(game_dir)
+                # First line: Game detection info
+                self.game_dir_info.set(f"✓ Game detected: {game_name}")
+                
+                # Second line: Action info
+                if preference == "Game Path":
+                    self.game_dir_action.set(f"Will use: (path-to-game)/{relative_path}")
+                elif preference == "Standard":
+                    self.game_dir_action.set(f"Will use: Standard masking")
+                else:  # Auto
+                    self.game_dir_action.set(f"Will use: (path-to-game)/{relative_path}")
+            else:
+                # First line: Standard location info
+                self.game_dir_info.set(f"ℹ Standard savegame location")
+                
+                # Second line: Action info
+                if preference == "Game Path":
+                    self.game_dir_action.set(f"Will use: Standard masking (Game Path not applicable)")
+                else:
+                    self.game_dir_action.set(f"Will use: Standard masking")
+        else:
+            self.game_dir_info.set("")
+            self.game_dir_action.set("")
+
+    def show_path_preview(self):
+        savegame_location = self.savegame_location.get().strip()
+        if not savegame_location:
+            messagebox.showinfo("Preview", "Please enter a savegame location first.")
+            return
+        
+        # Create preview window
+        preview_win = tk.Toplevel(self.root)
+        preview_win.title("Path Preview")
+        preview_win.geometry("650x450")
+        preview_win.transient(self.root)
+        preview_win.grab_set()
+        try:
+            if os.path.exists(ICON_PATH):
+                preview_win.iconbitmap(ICON_PATH)
+        except Exception as e:
+            print(f"Error loading icon for preview window: {e}")
+        
+        # Title
+        title_label = ttk.Label(preview_win, text="README.txt Path Preview", font=("Segoe UI", 12, "bold"))
+        title_label.pack(pady=(16, 8))
+        
+        # Separator
+        sep = ttk.Separator(preview_win, orient="horizontal")
+        sep.pack(fill=tk.X, padx=16, pady=(0, 16))
+        
+        # Content frame
+        content_frame = ttk.Frame(preview_win, padding="16")
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 16))
+        
+        # Original path
+        ttk.Label(content_frame, text="Original Path:", font=("Segoe UI", 9, "bold")).pack(anchor=tk.W)
+        original_text = tk.Text(content_frame, height=3, wrap=tk.WORD, state=tk.DISABLED)
+        original_text.pack(fill=tk.X, pady=(4, 12))
+        
+        # Masked path
+        ttk.Label(content_frame, text="Path in README.txt:", font=("Segoe UI", 9, "bold")).pack(anchor=tk.W)
+        masked_text = tk.Text(content_frame, height=3, wrap=tk.WORD, state=tk.DISABLED)
+        masked_text.pack(fill=tk.X, pady=(4, 12))
+        
+        # Detection info
+        detection_frame = ttk.LabelFrame(content_frame, text="Detection Info", padding="8")
+        detection_frame.pack(fill=tk.X, pady=(8, 0))
+        
+        detection_info = tk.Text(detection_frame, height=6, wrap=tk.WORD, state=tk.DISABLED)
+        detection_info.pack(fill=tk.X)
+        
+        # Usage examples frame
+        examples_frame = ttk.LabelFrame(content_frame, text="Usage Examples", padding="8")
+        examples_frame.pack(fill=tk.X, pady=(8, 0))
+        
+        examples_text = tk.Text(examples_frame, height=4, wrap=tk.WORD, state=tk.DISABLED)
+        examples_text.pack(fill=tk.X)
+        
+        # Update content
+        original_text.config(state=tk.NORMAL)
+        original_text.delete("1.0", tk.END)
+        original_text.insert("1.0", savegame_location)
+        original_text.config(state=tk.DISABLED)
+        
+        masked_path = mask_game_path_in_savegame_location(savegame_location, self.path_display_option.get())
+        masked_text.config(state=tk.NORMAL)
+        masked_text.delete("1.0", tk.END)
+        masked_text.insert("1.0", masked_path)
+        masked_text.config(state=tk.DISABLED)
+        
+        is_inside_game, game_dir, relative_path = detect_game_directory(savegame_location)
+        detection_info.config(state=tk.NORMAL)
+        detection_info.delete("1.0", tk.END)
+        
+        # Add preference info
+        detection_info.insert("1.0", f"Current preference: {self.path_display_option.get()}\n\n")
+        
+        if is_inside_game and relative_path:
+            game_name = os.path.basename(game_dir)
+            detection_info.insert(tk.END, f"✓ Game directory detected\n")
+            detection_info.insert(tk.END, f"Game directory: {game_dir}\n")
+            detection_info.insert(tk.END, f"Relative path: {relative_path}\n")
+            detection_info.insert(tk.END, f"Result: {masked_path}")
+            
+            if self.path_display_option.get() == "Game Path":
+                detection_info.insert(tk.END, f"\n\n💡 This will be shared as: (path-to-game)/{relative_path}")
+                detection_info.insert(tk.END, f"\nOther users can replace (path-to-game) with their game folder")
+            elif self.path_display_option.get() == "Standard":
+                detection_info.insert(tk.END, f"\n\n💡 This will use standard masking (username, Steam ID)")
+            else:  # Auto
+                detection_info.insert(tk.END, f"\n\n💡 Auto mode: Using Game Path for game directories")
+        else:
+            detection_info.insert(tk.END, f"ℹ Standard savegame location\n")
+            detection_info.insert(tk.END, f"Using standard masking (username, Steam ID)\n")
+            detection_info.insert(tk.END, f"Result: {masked_path}")
+            
+            if self.path_display_option.get() == "Game Path":
+                detection_info.insert(tk.END, f"\n\n💡 Game Path not applicable for this location")
+            elif self.path_display_option.get() == "Standard":
+                detection_info.insert(tk.END, f"\n\n💡 This will use standard masking (username, Steam ID)")
+            else:  # Auto
+                detection_info.insert(tk.END, f"\n\n💡 Auto mode: Using Standard for non-game directories")
+        detection_info.config(state=tk.DISABLED)
+        
+        # Update examples
+        examples_text.config(state=tk.NORMAL)
+        examples_text.delete("1.0", tk.END)
+        if is_inside_game and relative_path:
+            examples_text.insert("1.0", "Game Path: (path-to-game)/game/saves\n")
+            examples_text.insert(tk.END, "Standard: C:/Users/(pc-name)/AppData/...\n")
+            examples_text.insert(tk.END, "Auto: Uses Game Path for game directories\n")
+            examples_text.insert(tk.END, "\nNote: (path-to-game) will be replaced with actual game folder")
+        else:
+            examples_text.insert("1.0", "Standard: C:/Users/(pc-name)/AppData/...\n")
+            examples_text.insert(tk.END, "Game Path: Same as Standard (not applicable)\n")
+            examples_text.insert(tk.END, "Auto: Uses Standard for non-game directories\n")
+            examples_text.insert(tk.END, "\nNote: Standard masking hides username and Steam ID")
+        examples_text.config(state=tk.DISABLED)
+        
+        # Close button
+        ttk.Button(preview_win, text="Close", command=preview_win.destroy).pack(pady=(0, 16))
+
+    def load_preferences(self):
+        """Load user preferences from config"""
+        try:
+            preferences = self.config.get("preferences", {})
+            self.path_display_option.set(preferences.get("path_display", "Auto"))
+            self.timestamp_option.set(preferences.get("timestamp_option", "Disable"))
+        except Exception as e:
+            print(f"Error loading preferences: {e}")
+    
+    def save_preferences(self):
+        """Save user preferences to config"""
+        try:
+            if "preferences" not in self.config:
+                self.config["preferences"] = {}
+            
+            self.config["preferences"]["path_display"] = self.path_display_option.get()
+            self.config["preferences"]["timestamp_option"] = self.timestamp_option.get()
+            
+            # Save to file
+            self.save_config()
+        except Exception as e:
+            print(f"Error saving preferences: {e}")
 
 def main():
     try:

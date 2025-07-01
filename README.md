@@ -67,24 +67,12 @@ sweet-progress/
 
 ## Recent Improvements
 
-### Version 3.0 - Modular Architecture
+### Version 2.5 - Modular Architecture
 1. **Modular Design**: Complete codebase refactoring into logical modules
 2. **Separation of Concerns**: Clear separation between UI, business logic, and utilities
 3. **Maintainability**: Easier to maintain, extend, and debug
 4. **Code Reusability**: Modular components can be reused and tested independently
 5. **Clean Architecture**: Follows Python best practices and design patterns
-
-### Version 2.0 - Major Updates
-1. **Smart Game Ordering**: Dropdown now shows games based on last backup time instead of alphabetical order (limited to 5 most recent)
-2. **Backup History Tracking**: Automatic timestamp tracking for each game backup
-3. **Enhanced UI**: Progress bar, better error messages, and improved user experience
-4. **Game List Table**: Redesigned Game List Window with table format showing Game Title and Last Used columns
-5. **Game List Sorting**: Added sorting options (Alphabetical/Last Used) in the Game List Window
-6. **Cross-Platform Path Handling**: Proper support for Windows and Unix path separators
-7. **Input Validation**: Comprehensive validation for game titles and file paths
-8. **Memory Optimization**: Log rotation to prevent memory leaks during long sessions
-9. **Smart Path Detection**: Automatically detect game directories and provide path masking options
-10. **Path Preview**: Preview how paths will appear in README.txt files
 
 ### Technical Improvements
 - Fixed Tkinter initialization issues

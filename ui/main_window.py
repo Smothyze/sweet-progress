@@ -16,6 +16,18 @@ class SaveGameBackupApp:
         self.root.geometry("600x500")
         self.root.minsize(600, 500)
         
+        # Tambahkan menu bar
+        self.menu_bar = tk.Menu(self.root)
+        # File menu
+        file_menu = tk.Menu(self.menu_bar, tearoff=0)
+        file_menu.add_command(label="New", command=self.clear_all_inputs)
+        self.menu_bar.add_cascade(label="File", menu=file_menu)
+        # About menu
+        about_menu = tk.Menu(self.menu_bar, tearoff=0)
+        about_menu.add_command(label="Info", command=self.show_about)
+        self.menu_bar.add_cascade(label="About", menu=about_menu)
+        self.root.config(menu=self.menu_bar)
+        
         # Check icon file existence safely
         if os.path.exists(ICON_PATH):
             try:
@@ -86,7 +98,8 @@ class SaveGameBackupApp:
         ttk.Radiobutton(path_display_frame, text="Auto", variable=self.path_display_option, value="Auto").pack(side=tk.LEFT)
         ttk.Radiobutton(path_display_frame, text="Game Path", variable=self.path_display_option, value="Game Path").pack(side=tk.LEFT, padx=10)
         ttk.Radiobutton(path_display_frame, text="Standard", variable=self.path_display_option, value="Standard").pack(side=tk.LEFT, padx=10)
-        ttk.Button(main_frame, text="Preview", command=self.show_path_preview).grid(row=4, column=2, padx=5)
+        self.preview_btn = ttk.Button(main_frame, text="Preview", command=self.show_path_preview)
+        self.preview_btn.grid(row=4, column=2, padx=5)
         
         # Help text for Path Display
         help_text = "Auto: Smart detection | Game Path: Use (path-to-game) | Standard: Use full path with masking"
@@ -341,7 +354,7 @@ class SaveGameBackupApp:
         )
     
     def validate_inputs(self):
-        """Validate input fields and enable/disable create backup button"""
+        """Validate input fields and enable/disable create backup button and preview button"""
         game_title = self.game_title.get().strip()
         savegame_location = self.savegame_location.get().strip()
         backup_location = self.backup_location.get().strip()
@@ -349,6 +362,11 @@ class SaveGameBackupApp:
             self.create_backup_btn.state(["!disabled"])
         else:
             self.create_backup_btn.state(["disabled"])
+        # Enable/disable preview button
+        if savegame_location:
+            self.preview_btn.state(["!disabled"])
+        else:
+            self.preview_btn.state(["disabled"])
 
     def validate_list_button(self):
         """Validate list button state"""
@@ -366,15 +384,14 @@ class SaveGameBackupApp:
         """Update the game directory detection info display"""
         savegame_location = self.savegame_location.get().strip()
         if savegame_location:
+            # Tampilkan label jika ada input
+            self.game_dir_label.grid()
+            self.game_dir_action_label.grid()
             is_inside_game, game_dir, relative_path = detect_game_directory(savegame_location)
             preference = self.path_display_option.get()
-            
             if is_inside_game and relative_path:
                 game_name = os.path.basename(game_dir)
-                # First line: Game detection info
                 self.game_dir_info.set(f"✓ Game detected: {game_name}")
-                
-                # Second line: Action info
                 if preference == "Game Path":
                     self.game_dir_action.set(f"Will use: (path-to-game)/{relative_path}")
                 elif preference == "Standard":
@@ -382,15 +399,15 @@ class SaveGameBackupApp:
                 else:  # Auto
                     self.game_dir_action.set(f"Will use: (path-to-game)/{relative_path}")
             else:
-                # First line: Standard location info
                 self.game_dir_info.set(f"ℹ Standard savegame location")
-                
-                # Second line: Action info
                 if preference == "Game Path":
                     self.game_dir_action.set(f"Will use: Standard masking (Game Path not applicable)")
                 else:
                     self.game_dir_action.set(f"Will use: Standard masking")
         else:
+            # Sembunyikan label jika kosong
+            self.game_dir_label.grid_remove()
+            self.game_dir_action_label.grid_remove()
             self.game_dir_info.set("")
             self.game_dir_action.set("")
 
@@ -413,4 +430,17 @@ class SaveGameBackupApp:
             self.config_manager.save_preferences(preferences)
             self.config_manager.save_config()
         except Exception as e:
-            print(f"Error saving preferences: {e}") 
+            print(f"Error saving preferences: {e}")
+
+    def clear_all_inputs(self):
+        """Membersihkan seluruh input di form utama."""
+        self.game_title.set("")
+        self.savegame_location.set("")
+        self.backup_location.set("")
+        self.path_display_option.set("Auto")
+        self.timestamp_option.set("Disable")
+        self.log("All inputs cleared for new entry.")
+
+    def show_about(self):
+        """Menampilkan informasi aplikasi."""
+        messagebox.showinfo("About", "Sweet Progress\nMaking game save backups simple, reliable, and maintainable!\nby Smothy") 

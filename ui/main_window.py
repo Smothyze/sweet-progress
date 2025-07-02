@@ -2,6 +2,7 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from datetime import datetime
+import webbrowser
 
 from config.config_manager import ConfigManager
 from backup.backup_manager import BackupManager
@@ -442,5 +443,39 @@ class SaveGameBackupApp:
         self.log("All inputs cleared for new entry.")
 
     def show_about(self):
-        """Menampilkan informasi aplikasi."""
-        messagebox.showinfo("About", "Sweet Progress\nMaking game save backups simple, reliable, and maintainable!\nby Smothy") 
+        """Menampilkan informasi aplikasi dengan hyperlink pada 'Smothy'."""
+        about_window = tk.Toplevel(self.root)
+        about_window.title("Info")
+        about_window.geometry("430x200")
+        about_window.resizable(False, False)
+
+        # Terapkan icon pada jendela info
+        if os.path.exists(ICON_PATH):
+            try:
+                about_window.iconbitmap(ICON_PATH)
+            except Exception as e:
+                print(f"Error loading icon for about window: {e}")
+        else:
+            print(f"Warning: Icon file not found at {ICON_PATH}")
+
+        # Judul bold dan rata tengah
+        title_label = tk.Label(about_window, text="Sweet Progress", font=("Segoe UI", 12, "bold"), anchor="center")
+        title_label.pack(fill="x", pady=(18, 0))
+
+        # Separator garis
+        sep = ttk.Separator(about_window, orient="horizontal")
+        sep.pack(fill="x", padx=20, pady=(8, 10))
+
+        # Info text
+        info_text = "Making game save backups simple, reliable, and maintainable!\nCreated by "
+        label = tk.Label(about_window, text=info_text, font=("Segoe UI", 10), justify=tk.LEFT, anchor="w")
+        label.pack(anchor="w", padx=28, pady=(0, 0))
+
+        # Hyperlink label
+        link = tk.Label(about_window, text="Smothy", font=("Segoe UI", 10, "underline"), fg="blue", cursor="hand2")
+        link.pack(anchor="w", padx=28)
+        link.bind("<Button-1>", lambda e: webbrowser.open_new("https://guns.lol/smothyze"))
+
+        # Tombol close
+        close_btn = ttk.Button(about_window, text="Close", command=about_window.destroy)
+        close_btn.pack(pady=15) 

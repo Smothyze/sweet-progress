@@ -54,6 +54,8 @@ class SaveGameBackupApp:
         self.log_line_count = 0
         self.max_log_lines = 1000
         
+        self._selected_game_id = None
+        
         self.create_widgets()
         
     def create_widgets(self):
@@ -67,7 +69,8 @@ class SaveGameBackupApp:
         
         # Get recent games ordered by last backup time (limit to 5 items)
         recent_games = self.config_manager.get_recent_games(5)
-        self.game_title_combo['values'] = recent_games
+        self.game_title_combo['values'] = [title for _, title in recent_games]
+        self._recent_game_ids = [gid for gid, _ in recent_games]
         
         self.game_title_combo.bind("<<ComboboxSelected>>", self.on_game_selected)
         self.game_title_combo.bind("<Return>", self.on_game_manual_entry)
@@ -172,19 +175,23 @@ class SaveGameBackupApp:
         self.timestamp_option.trace_add('write', lambda *args: self.save_preferences())
     
     def on_game_selected(self, event):
-        game = self.game_title.get()
-        if game in self.config_manager.config["games"]:
-            paths = self.config_manager.config["games"][game]
-            self.savegame_location.set(paths.get("savegame_location", ""))
-            self.backup_location.set(paths.get("backup_location", ""))
-            self.log(f"Game selected: {game}")
+        title = self.game_title.get()
+        gid = self.config_manager.get_game_id_by_title(title)
+        if gid:
+            game = self.config_manager.get_game_by_id(gid)
+            self.savegame_location.set(game.get("savegame_location", ""))
+            self.backup_location.set(game.get("backup_location", ""))
+            self._selected_game_id = gid
+            self.log(f"Game selected: {title}")
     
     def on_game_manual_entry(self, event):
-        game = self.game_title.get()
-        if game in self.config_manager.config["games"]:
-            paths = self.config_manager.config["games"][game]
-            self.savegame_location.set(paths.get("savegame_location", ""))
-            self.backup_location.set(paths.get("backup_location", ""))
+        title = self.game_title.get()
+        gid = self.config_manager.get_game_id_by_title(title)
+        if gid:
+            game = self.config_manager.get_game_by_id(gid)
+            self.savegame_location.set(game.get("savegame_location", ""))
+            self.backup_location.set(game.get("backup_location", ""))
+            self._selected_game_id = gid
     
     def browse_savegame(self):
         folder = filedialog.askdirectory()
@@ -264,16 +271,14 @@ class SaveGameBackupApp:
             return
             
         try:
-            # Update configuration
-            self.config_manager.add_game(game_title, savegame_location, backup_location)
+            # Update configuration (add or update by id)
+            gid = self._selected_game_id
+            gid = self.config_manager.add_game(game_title, savegame_location, backup_location, game_id=gid)
+            self._selected_game_id = gid
             self.config_manager.update_last_used(game_title, savegame_location, backup_location)
-            
-            # Update backup history with current timestamp
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            self.config_manager.update_backup_history(game_title, current_time)
-            
+            self.config_manager.update_backup_history(gid, current_time)
             self.config_manager.save_config()
-            
             self.log(f"Starting backup for {game_title}...")
             
             # Show progress bar
@@ -297,7 +302,8 @@ class SaveGameBackupApp:
             
             # Update dropdown values after successful backup
             self.update_dropdown_values()
-            
+            # Enable list button if backup was successful
+            self.validate_list_button()
             messagebox.showinfo("Success", "Backup completed successfully!")
         except Exception as e:
             self.log(f"Error: {str(e)}")
@@ -315,20 +321,26 @@ class SaveGameBackupApp:
             self.on_game_deleted_from_list
         )
     
-    def on_game_selected_from_list(self, game_name):
+    def on_game_selected_from_list(self, gid):
         """Callback when game is selected from list"""
-        self.game_title.set(game_name)
-        self.on_game_selected(None)
-        self.log(f"Game selected from list: {game_name}")
+        game = self.config_manager.get_game_by_id(gid)
+        if game:
+            self._selected_game_id = gid
+            self.game_title.set(game.get("game_title", ""))
+            self.savegame_location.set(game.get("savegame_location", ""))
+            self.backup_location.set(game.get("backup_location", ""))
+            self.log(f"Game selected from list: {game.get('game_title', '')}")
     
-    def on_game_deleted_from_list(self, game_name):
+    def on_game_deleted_from_list(self, gid):
         """Callback when game is deleted from list"""
         self.update_dropdown_values()
-        if self.game_title.get() == game_name:
+        if self._selected_game_id == gid:
+            self._selected_game_id = None
             self.game_title.set("")
             self.savegame_location.set("")
             self.backup_location.set("")
-        self.log(f"Game '{game_name}' has been deleted from the list.")
+        game = self.config_manager.get_game_by_id(gid)
+        self.log(f"Game '{game.get('game_title', gid) if game else gid}' has been deleted from the list.")
     
     def open_credit_setting(self):
         """Open credit setting window"""
@@ -381,7 +393,8 @@ class SaveGameBackupApp:
     def update_dropdown_values(self):
         """Update dropdown values with recent games (limit to 5 items)"""
         recent_games = self.config_manager.get_recent_games(5)
-        self.game_title_combo['values'] = recent_games
+        self.game_title_combo['values'] = [title for _, title in recent_games]
+        self._recent_game_ids = [gid for gid, _ in recent_games]
 
     def update_game_directory_info(self):
         """Update the game directory detection info display"""

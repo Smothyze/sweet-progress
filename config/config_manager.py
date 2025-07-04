@@ -2,6 +2,7 @@ import json
 import os
 from utils.path_utils import replace_username_in_path
 from utils.resource_utils import CONFIG_PATH, RESOURCE_DIR
+import uuid
 
 class ConfigManager:
     def __init__(self):
@@ -25,22 +26,26 @@ class ConfigManager:
                 with open(CONFIG_PATH, "r", encoding='utf-8') as f:
                     config = json.load(f)
                     
-                # Validate config structure
-                if not isinstance(config, dict):
-                    raise ValueError("Invalid config format")
+                # MIGRASI: Jika format lama (berbasis game_title), migrasikan ke format baru (berbasis id)
+                if config.get("games") and all(isinstance(v, dict) and "id" not in v for v in config["games"].values()):
+                    migrated_games = {}
+                    for game_title, game_data in config["games"].items():
+                        new_id = str(uuid.uuid4())
+                        migrated_games[new_id] = {
+                            "id": new_id,
+                            "game_title": game_title,
+                            "savegame_location": game_data.get("savegame_location", ""),
+                            "backup_location": game_data.get("backup_location", "")
+                        }
+                    config["games"] = migrated_games
+                    self.save_config_migrated(config)
+                # Pastikan semua entry punya id dan game_title
+                for gid, game in config["games"].items():
+                    if "id" not in game:
+                        game["id"] = gid
+                    if "game_title" not in game:
+                        game["game_title"] = gid
                 
-                if "games" not in config:
-                    config["games"] = {}
-                if "last_used" not in config:
-                    config["last_used"] = {}
-                if "backup_history" not in config:
-                    config["backup_history"] = {}
-                if "preferences" not in config:
-                    config["preferences"] = {
-                        "path_display": "Auto",
-                        "timestamp_option": "Disable"
-                    }
-                    
                 for game in config["games"]:
                     game_config = config["games"][game]
                     if isinstance(game_config, dict):
@@ -78,29 +83,51 @@ class ConfigManager:
             print(f"Error saving config: {e}")
             raise Exception(f"Failed to save configuration: {str(e)}")
     
+    def save_config_migrated(self, config):
+        try:
+            with open(CONFIG_PATH, "w", encoding='utf-8') as f:
+                json.dump(config, f, indent=4)
+            print(f"Config migrated and saved to: {CONFIG_PATH}")
+        except Exception as e:
+            print(f"Error saving migrated config: {e}")
+    
+    def generate_game_id(self):
+        return str(uuid.uuid4())
+    
+    def get_game_by_id(self, game_id):
+        return self.config["games"].get(game_id)
+    
+    def get_game_id_by_title(self, game_title):
+        for gid, game in self.config["games"].items():
+            if game.get("game_title") == game_title:
+                return gid
+        return None
+    
     def get_recent_games(self, max_count=10):
         """Get games ordered by last backup time"""
         if not self.config["games"]:
             return []
         
-        # Get all games with their last backup time
         games_with_time = []
-        for game_name in self.config["games"].keys():
-            last_backup_time = self.config.get("backup_history", {}).get(game_name, "1970-01-01 00:00:00")
-            games_with_time.append((game_name, last_backup_time))
+        for gid, game in self.config["games"].items():
+            last_backup_time = self.config.get("backup_history", {}).get(gid, "1970-01-01 00:00:00")
+            games_with_time.append((gid, game.get("game_title", ""), last_backup_time))
         
-        # Sort by backup time (newest first)
-        games_with_time.sort(key=lambda x: x[1], reverse=True)
+        games_with_time.sort(key=lambda x: x[2], reverse=True)
         
-        # Return only game names, limited to max_count
-        return [game[0] for game in games_with_time[:max_count]]
+        return [(gid, game_title) for gid, game_title, _ in games_with_time[:max_count]]
     
-    def add_game(self, game_title, savegame_location, backup_location):
-        """Add or update game configuration"""
-        self.config["games"][game_title] = {
+    def add_game(self, game_title, savegame_location, backup_location, game_id=None):
+        """Add or update game configuration by id. If game_id is None, create new."""
+        if game_id is None:
+            game_id = self.generate_game_id()
+        self.config["games"][game_id] = {
+            "id": game_id,
+            "game_title": game_title,
             "savegame_location": savegame_location,
             "backup_location": backup_location
         }
+        return game_id
     
     def update_last_used(self, game_title, savegame_location, backup_location):
         """Update last used configuration"""
@@ -110,22 +137,22 @@ class ConfigManager:
             "backup_location": backup_location
         }
     
-    def update_backup_history(self, game_title, timestamp):
+    def update_backup_history(self, game_id, timestamp):
         """Update backup history with timestamp"""
         if "backup_history" not in self.config:
             self.config["backup_history"] = {}
-        self.config["backup_history"][game_title] = timestamp
+        self.config["backup_history"][game_id] = timestamp
     
-    def get_game_config(self, game_title):
+    def get_game_config(self, game_id):
         """Get configuration for specific game"""
-        return self.config["games"].get(game_title, {})
+        return self.config["games"].get(game_id, {})
     
-    def delete_game(self, game_title):
+    def delete_game(self, game_id):
         """Delete game from configuration"""
-        if game_title in self.config["games"]:
-            del self.config["games"][game_title]
-        if "backup_history" in self.config and game_title in self.config["backup_history"]:
-            del self.config["backup_history"][game_title]
+        if game_id in self.config["games"]:
+            del self.config["games"][game_id]
+        if "backup_history" in self.config and game_id in self.config["backup_history"]:
+            del self.config["backup_history"][game_id]
     
     def get_preferences(self):
         """Get user preferences"""

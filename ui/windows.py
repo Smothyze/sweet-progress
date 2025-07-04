@@ -91,43 +91,44 @@ class GameListWindow:
         
         # Get games with their last backup time
         games_with_time = []
-        for game_name in self.config_manager.config["games"].keys():
-            last_backup_time = self.config_manager.config.get("backup_history", {}).get(game_name, "Never")
-            games_with_time.append((game_name, last_backup_time))
+        for gid, game in self.config_manager.config["games"].items():
+            game_title = game.get("game_title", gid)
+            last_backup_time = self.config_manager.config.get("backup_history", {}).get(gid, "Never")
+            games_with_time.append((gid, game_title, last_backup_time))
         
         # Sort based on selected option
         if self.sort_var.get() == "Alphabetical":
-            games_with_time.sort(key=lambda x: x[0].lower())
+            games_with_time.sort(key=lambda x: x[1].lower())
         else:
-            games_with_time.sort(key=lambda x: x[1] if x[1] != "Never" else "1970-01-01 00:00:00", reverse=True)
+            games_with_time.sort(key=lambda x: x[2] if x[2] != "Never" else "1970-01-01 00:00:00", reverse=True)
         
         # Insert games into treeview
-        for game_name, last_backup in games_with_time:
-            self.tree.insert("", tk.END, values=(game_name, last_backup))
+        for gid, game_title, last_backup in games_with_time:
+            self.tree.insert("", tk.END, iid=gid, values=(game_title, last_backup))
     
     def select_game(self):
         """Select game from list"""
         selection = self.tree.selection()
         if selection:
-            item = self.tree.item(selection[0])
-            game_name = item['values'][0]
-            if self.on_game_selected_callback:
-                self.on_game_selected_callback(game_name)
+            gid = selection[0]
+            game = self.config_manager.get_game_by_id(gid)
+            if game and self.on_game_selected_callback:
+                self.on_game_selected_callback(gid)
             self.window.after(100, self.window.destroy)
     
     def delete_game(self):
         """Delete game from list"""
         selection = self.tree.selection()
         if selection:
-            item = self.tree.item(selection[0])
-            game_name = item['values'][0]
-            if messagebox.askyesno("Confirmation", f"Delete game title '{game_name}' from the list?"):
+            gid = selection[0]
+            game = self.config_manager.get_game_by_id(gid)
+            if game and messagebox.askyesno("Confirmation", f"Delete game title '{game.get('game_title', gid)}' from the list?"):
                 try:
-                    self.config_manager.delete_game(game_name)
+                    self.config_manager.delete_game(gid)
                     self.config_manager.save_config()
-                    self.tree.delete(selection[0])
+                    self.tree.delete(gid)
                     if self.on_game_deleted_callback:
-                        self.on_game_deleted_callback(game_name)
+                        self.on_game_deleted_callback(gid)
                 except Exception as e:
                     messagebox.showerror("Error", f"Failed to delete game: {str(e)}")
     

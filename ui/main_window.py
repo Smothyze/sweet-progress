@@ -26,6 +26,8 @@ class SaveGameBackupApp:
         # About menu
         about_menu = tk.Menu(self.menu_bar, tearoff=0)
         about_menu.add_command(label="Info", command=self.show_about)
+        about_menu.add_separator()
+        about_menu.add_command(label="GitHub", command=lambda: webbrowser.open_new("https://github.com/Smothyze/sweet-progress"))
         self.menu_bar.add_cascade(label="About", menu=about_menu)
         self.root.config(menu=self.menu_bar)
         

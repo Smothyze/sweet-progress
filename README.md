@@ -65,25 +65,6 @@ sweet-progress/
 - **`ui/`**: Contains all user interface components and windows
 - **`program.py`**: Clean entry point that initializes the application
 
-## Recent Improvements
-
-### Version 2.5 - Modular Architecture
-1. **Modular Design**: Complete codebase refactoring into logical modules
-2. **Separation of Concerns**: Clear separation between UI, business logic, and utilities
-3. **Maintainability**: Easier to maintain, extend, and debug
-4. **Code Reusability**: Modular components can be reused and tested independently
-5. **Clean Architecture**: Follows Python best practices and design patterns
-
-### Technical Improvements
-- Fixed Tkinter initialization issues
-- Added proper error handling throughout the application
-- Improved config file structure with backup history
-- Enhanced file operation safety with permission checks
-- Better cross-platform compatibility
-- Modular architecture for easier maintenance
-- Clean separation of concerns
-- Improved code organization and readability
-
 ## Installation
 
 ### Prerequisites

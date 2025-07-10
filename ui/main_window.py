@@ -273,6 +273,9 @@ class SaveGameBackupApp:
         try:
             # Update configuration (add or update by id)
             gid = self._selected_game_id
+            # Tambahan: jika gid None, cek apakah judul sudah ada
+            if gid is None:
+                gid = self.config_manager.get_game_id_by_title(game_title)
             gid = self.config_manager.add_game(game_title, savegame_location, backup_location, game_id=gid)
             self._selected_game_id = gid
             self.config_manager.update_last_used(game_title, savegame_location, backup_location)

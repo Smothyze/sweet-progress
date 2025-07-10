@@ -118,9 +118,14 @@ class ConfigManager:
         return [(gid, game_title) for gid, game_title, _ in games_with_time[:max_count]]
     
     def add_game(self, game_title, savegame_location, backup_location, game_id=None):
-        """Add or update game configuration by id. If game_id is None, create new."""
+        """Add or update game configuration by id. If game_id is None, create new. Prevent duplicate game titles."""
+        # Cek apakah sudah ada game dengan judul yang sama
         if game_id is None:
-            game_id = self.generate_game_id()
+            existing_id = self.get_game_id_by_title(game_title)
+            if existing_id is not None:
+                game_id = existing_id
+            else:
+                game_id = self.generate_game_id()
         self.config["games"][game_id] = {
             "id": game_id,
             "game_title": game_title,

@@ -121,7 +121,9 @@ The application automatically creates a configuration file at:
 ```json
 {
     "games": {
-        "Game Name": {
+        "<game_id>": {
+            "id": "<game_id>",
+            "game_title": "Game Name",
             "savegame_location": "path/to/savegame",
             "backup_location": "path/to/backup"
         }
@@ -129,11 +131,10 @@ The application automatically creates a configuration file at:
     "last_used": {
         "game_title": "Last Game",
         "savegame_location": "path/to/savegame",
-        "backup_location": "path/to/backup",
-        "author": "Author Name"
+        "backup_location": "path/to/backup"
     },
     "backup_history": {
-        "Game Name": "2024-01-15 14:30:25"
+        "<game_id>": "YYYY-MM-DD HH:MM:SS"
     },
     "preferences": {
         "path_display": "Auto",

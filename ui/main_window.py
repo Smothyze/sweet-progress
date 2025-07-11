@@ -6,7 +6,7 @@ import webbrowser
 
 from config.config_manager import ConfigManager
 from backup.backup_manager import BackupManager
-from utils.path_utils import validate_path, validate_game_title, detect_game_directory
+from utils.path_utils import validate_path, validate_game_title, detect_game_directory, get_current_username
 from utils.resource_utils import ICON_PATH
 from ui.windows import GameListWindow, CreditSettingWindow, PathPreviewWindow
 
@@ -290,7 +290,9 @@ class SaveGameBackupApp:
             self.root.update()
             
             # Get author from config
-            author = self.config_manager.config.get("last_used", {}).get("author", "").strip() or "Smothy"
+            author = self.config_manager.config.get("last_used", {}).get("author", "").strip()
+            if not author:
+                author = get_current_username()
             
             # Create backup
             self.backup_manager.create_backup(

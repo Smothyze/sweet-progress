@@ -95,22 +95,31 @@ class BackupManager:
         """Create credit file with backup information"""
         credit_file_path = os.path.join(backup_base_folder, "Readme.txt")
         backup_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
+        separator = "=" * 60
+        additional_info = (
+            "**********************************************************\n"
+            "* This savegame was created using \"Sweet Progress\"       *\n"
+            "* Feel free for contribute and try this program,         *\n"
+            "* Check on : https://github.com/Smothyze/sweet-progress  *\n"
+            "**********************************************************\n"
+        )
         try:
             with open(credit_file_path, "w", encoding='utf-8') as credit_file:
                 credit_file.write(f"Backup savegame for {game_name}.\n")
+                credit_file.write(f"{separator}\n")
                 credit_file.write(f"\n")
                 credit_file.write(f"Author:\n")
                 credit_file.write(f"{author}\n")
-                if credit_note:
-                    credit_file.write(f"\nNote:\n{credit_note}\n")
                 credit_file.write(f"\n")
+                if credit_note:
+                    credit_file.write(f"Note:\n{credit_note}\n\n")
                 credit_file.write(f"Update on:\n")
                 credit_file.write(f"{backup_time}\n")
                 credit_file.write(f"\n")
                 credit_file.write(f"Savegame Location:\n")
                 masked_path = mask_game_path_in_savegame_location(source_folder, path_display_option)
-                credit_file.write(f"{masked_path}\n")
+                credit_file.write(f"{masked_path}\n\n")
+                credit_file.write(additional_info)
             self.log(f"Credit file added: {credit_file_path}")
         except Exception as e:
             self.log(f"Warning: Could not create credit file: {str(e)}") 

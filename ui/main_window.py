@@ -17,7 +17,7 @@ class SaveGameBackupApp:
         self.root.geometry("600x500")
         self.root.minsize(600, 500)
         
-        # Tambahkan menu bar
+        # Add menu bar
         self.menu_bar = tk.Menu(self.root)
         # File menu
         file_menu = tk.Menu(self.menu_bar, tearoff=0)
@@ -163,7 +163,7 @@ class SaveGameBackupApp:
         # Update game directory info initially
         self.update_game_directory_info()
         
-        # Pasang trace pada input
+        # Attach trace to input fields
         self.game_title.trace_add('write', lambda *args: self.validate_inputs())
         self.savegame_location.trace_add('write', lambda *args: self.validate_inputs())
         self.savegame_location.trace_add('write', lambda *args: self.update_game_directory_info())
@@ -273,7 +273,7 @@ class SaveGameBackupApp:
         try:
             # Update configuration (add or update by id)
             gid = self._selected_game_id
-            # Tambahan: jika gid None, cek apakah judul sudah ada
+            # Additional: if gid is None, check if the title already exists
             if gid is None:
                 gid = self.config_manager.get_game_id_by_title(game_title)
             gid = self.config_manager.add_game(game_title, savegame_location, backup_location, game_id=gid)
@@ -403,7 +403,7 @@ class SaveGameBackupApp:
         """Update the game directory detection info display"""
         savegame_location = self.savegame_location.get().strip()
         if savegame_location:
-            # Tampilkan label jika ada input
+            # Show label if there is input
             self.game_dir_label.grid()
             self.game_dir_action_label.grid()
             is_inside_game, game_dir, relative_path = detect_game_directory(savegame_location)
@@ -424,7 +424,7 @@ class SaveGameBackupApp:
                 else:
                     self.game_dir_action.set(f"Will use: Standard masking")
         else:
-            # Sembunyikan label jika kosong
+            # Hide label if there is no input
             self.game_dir_label.grid_remove()
             self.game_dir_action_label.grid_remove()
             self.game_dir_info.set("")
@@ -452,7 +452,7 @@ class SaveGameBackupApp:
             print(f"Error saving preferences: {e}")
 
     def clear_all_inputs(self):
-        """Membersihkan seluruh input di form utama."""
+        """Clear all inputs in the main form."""
         self.game_title.set("")
         self.savegame_location.set("")
         self.backup_location.set("")
@@ -461,13 +461,13 @@ class SaveGameBackupApp:
         self.log("All inputs cleared for new entry.")
 
     def show_about(self):
-        """Menampilkan informasi aplikasi dengan hyperlink pada 'Smothy'."""
+        """Show application information with hyperlink on 'Smothy'."""
         about_window = tk.Toplevel(self.root)
         about_window.title("Info")
         about_window.geometry("430x200")
         about_window.resizable(False, False)
 
-        # Terapkan icon pada jendela info
+        # Apply icon to info window
         if os.path.exists(ICON_PATH):
             try:
                 about_window.iconbitmap(ICON_PATH)
@@ -476,11 +476,11 @@ class SaveGameBackupApp:
         else:
             print(f"Warning: Icon file not found at {ICON_PATH}")
 
-        # Judul bold dan rata tengah
+        # Title bold and centered
         title_label = tk.Label(about_window, text="Sweet Progress", font=("Segoe UI", 12, "bold"), anchor="center")
         title_label.pack(fill="x", pady=(18, 0))
 
-        # Separator garis
+        # Separator line
         sep = ttk.Separator(about_window, orient="horizontal")
         sep.pack(fill="x", padx=20, pady=(8, 10))
 
@@ -494,6 +494,6 @@ class SaveGameBackupApp:
         link.pack(anchor="w", padx=28)
         link.bind("<Button-1>", lambda e: webbrowser.open_new("https://guns.lol/smothyze"))
 
-        # Tombol close
+        # Close button
         close_btn = ttk.Button(about_window, text="Close", command=about_window.destroy)
         close_btn.pack(pady=15) 

@@ -14,7 +14,7 @@ class ConfigManager:
         default_config = {
             "games": {},
             "last_used": {},
-            "backup_history": {},  # Add backup history to track timestamps
+            "backup_history": {},  
             "preferences": {
                 "path_display": "Auto",
                 "timestamp_option": "Disable"
@@ -26,7 +26,7 @@ class ConfigManager:
                 with open(CONFIG_PATH, "r", encoding='utf-8') as f:
                     config = json.load(f)
                     
-                # MIGRASI: Jika format lama (berbasis game_title), migrasikan ke format baru (berbasis id)
+                # MIGRATION: If using the old format (based on game_title), migrate to the new format (based on id)
                 if config.get("games") and all(isinstance(v, dict) and "id" not in v for v in config["games"].values()):
                     migrated_games = {}
                     for game_title, game_data in config["games"].items():
@@ -39,7 +39,7 @@ class ConfigManager:
                         }
                     config["games"] = migrated_games
                     self.save_config_migrated(config)
-                # Pastikan semua entry punya id dan game_title
+                # Ensure every entry has an id and game_title
                 for gid, game in config["games"].items():
                     if "id" not in game:
                         game["id"] = gid
@@ -119,7 +119,7 @@ class ConfigManager:
     
     def add_game(self, game_title, savegame_location, backup_location, game_id=None):
         """Add or update game configuration by id. If game_id is None, create new. Prevent duplicate game titles."""
-        # Cek apakah sudah ada game dengan judul yang sama
+        # Check if there is already a game with the same title
         if game_id is None:
             existing_id = self.get_game_id_by_title(game_title)
             if existing_id is not None:

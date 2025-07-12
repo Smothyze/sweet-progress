@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import os
 from utils.resource_utils import ICON_PATH
-from utils.path_utils import detect_game_directory, mask_game_path_in_savegame_location
+from utils.path_utils import detect_game_directory, mask_game_path_in_savegame_location, normalize_path_for_display
 
 class GameListWindow:
     def __init__(self, parent, config_manager, on_game_selected_callback, on_game_deleted_callback):
@@ -234,9 +234,10 @@ class PathPreviewWindow:
         
         self.window = tk.Toplevel(parent)
         self.window.title("Path Preview")
-        self.window.geometry("650x450")
+        self.window.geometry("700x520")
         self.window.transient(parent)
         self.window.grab_set()
+        self.window.resizable(False, False)
         
         try:
             if os.path.exists(ICON_PATH):
@@ -247,52 +248,68 @@ class PathPreviewWindow:
         self.create_widgets()
     
     def create_widgets(self):
+        # Main container
+        main_frame = ttk.Frame(self.window, padding="12")
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        
         # Title
-        title_label = ttk.Label(self.window, text="README.txt Path Preview", font=("Segoe UI", 12, "bold"))
-        title_label.pack(pady=(16, 8))
+        title_label = ttk.Label(main_frame, text="README.txt Path Preview", font=("Segoe UI", 12, "bold"))
+        title_label.pack(pady=(0, 8))
         
         # Separator
-        sep = ttk.Separator(self.window, orient="horizontal")
-        sep.pack(fill=tk.X, padx=16, pady=(0, 16))
-        
-        # Content frame
-        content_frame = ttk.Frame(self.window, padding="16")
-        content_frame.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 16))
+        sep = ttk.Separator(main_frame, orient="horizontal")
+        sep.pack(fill=tk.X, pady=(0, 12))
         
         # Original path
-        ttk.Label(content_frame, text="Original Path:", font=("Segoe UI", 9, "bold")).pack(anchor=tk.W)
-        original_text = tk.Text(content_frame, height=3, wrap=tk.WORD, state=tk.DISABLED)
-        original_text.pack(fill=tk.X, pady=(4, 12))
+        ttk.Label(main_frame, text="Original Path:", font=("Segoe UI", 9, "bold")).pack(anchor=tk.W)
+        original_text = tk.Text(main_frame, height=2, wrap=tk.WORD, state=tk.DISABLED)
+        original_text.pack(fill=tk.X, pady=(2, 8))
         
         # Masked path
-        ttk.Label(content_frame, text="Path in README.txt:", font=("Segoe UI", 9, "bold")).pack(anchor=tk.W)
-        masked_text = tk.Text(content_frame, height=3, wrap=tk.WORD, state=tk.DISABLED)
-        masked_text.pack(fill=tk.X, pady=(4, 12))
+        ttk.Label(main_frame, text="Path in README.txt:", font=("Segoe UI", 9, "bold")).pack(anchor=tk.W)
+        masked_text = tk.Text(main_frame, height=2, wrap=tk.WORD, state=tk.DISABLED)
+        masked_text.pack(fill=tk.X, pady=(2, 8))
         
-        # Detection info
-        detection_frame = ttk.LabelFrame(content_frame, text="Detection Info", padding="8")
-        detection_frame.pack(fill=tk.X, pady=(8, 0))
+        # Detection info with individual scrollbar
+        detection_frame = ttk.LabelFrame(main_frame, text="Detection Info", padding="6")
+        detection_frame.pack(fill=tk.BOTH, expand=True, pady=(6, 8))
         
-        detection_info = tk.Text(detection_frame, height=6, wrap=tk.WORD, state=tk.DISABLED)
-        detection_info.pack(fill=tk.X)
+        # Create frame for detection info with scrollbar
+        detection_container = ttk.Frame(detection_frame)
+        detection_container.pack(fill=tk.BOTH, expand=True)
         
-        # Usage examples frame
-        examples_frame = ttk.LabelFrame(content_frame, text="Usage Examples", padding="8")
-        examples_frame.pack(fill=tk.X, pady=(8, 0))
+        detection_info = tk.Text(detection_container, height=6, wrap=tk.WORD, state=tk.DISABLED)
+        detection_scrollbar = ttk.Scrollbar(detection_container, orient="vertical", command=detection_info.yview)
+        detection_info.configure(yscrollcommand=detection_scrollbar.set)
         
-        examples_text = tk.Text(examples_frame, height=4, wrap=tk.WORD, state=tk.DISABLED)
-        examples_text.pack(fill=tk.X)
+        detection_info.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        detection_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Usage examples with individual scrollbar
+        examples_frame = ttk.LabelFrame(main_frame, text="Usage Examples", padding="6")
+        examples_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 8))
+        
+        # Create frame for examples with scrollbar
+        examples_container = ttk.Frame(examples_frame)
+        examples_container.pack(fill=tk.BOTH, expand=True)
+        
+        examples_text = tk.Text(examples_container, height=4, wrap=tk.WORD, state=tk.DISABLED)
+        examples_scrollbar = ttk.Scrollbar(examples_container, orient="vertical", command=examples_text.yview)
+        examples_text.configure(yscrollcommand=examples_scrollbar.set)
+        
+        examples_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        examples_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # Update content
         original_text.config(state=tk.NORMAL)
         original_text.delete("1.0", tk.END)
-        original_text.insert("1.0", self.savegame_location)
+        original_text.insert("1.0", normalize_path_for_display(self.savegame_location))
         original_text.config(state=tk.DISABLED)
         
         masked_path = mask_game_path_in_savegame_location(self.savegame_location, self.path_display_option)
         masked_text.config(state=tk.NORMAL)
         masked_text.delete("1.0", tk.END)
-        masked_text.insert("1.0", masked_path)
+        masked_text.insert("1.0", normalize_path_for_display(masked_path))
         masked_text.config(state=tk.DISABLED)
         
         is_inside_game, game_dir, relative_path = detect_game_directory(self.savegame_location)
@@ -304,22 +321,30 @@ class PathPreviewWindow:
         
         if is_inside_game and relative_path:
             game_name = os.path.basename(game_dir)
+            # Normalize paths for consistent display
+            display_game_dir = normalize_path_for_display(game_dir)
+            display_relative_path = normalize_path_for_display(relative_path)
+            display_masked_path = normalize_path_for_display(masked_path)
+            
             detection_info.insert(tk.END, f"✓ Game directory detected\n")
-            detection_info.insert(tk.END, f"Game directory: {game_dir}\n")
-            detection_info.insert(tk.END, f"Relative path: {relative_path}\n")
-            detection_info.insert(tk.END, f"Result: {masked_path}")
+            detection_info.insert(tk.END, f"Game directory: {display_game_dir}\n")
+            detection_info.insert(tk.END, f"Relative path: {display_relative_path}\n")
+            detection_info.insert(tk.END, f"Result: {display_masked_path}")
             
             if self.path_display_option == "Game Path":
-                detection_info.insert(tk.END, f"\n\n💡 This will be shared as: (path-to-game)/{relative_path}")
+                detection_info.insert(tk.END, f"\n\n💡 This will be shared as: (path-to-game)/{display_relative_path}")
                 detection_info.insert(tk.END, f"\nOther users can replace (path-to-game) with their game folder")
             elif self.path_display_option == "Standard":
                 detection_info.insert(tk.END, f"\n\n💡 This will use standard masking (username, Steam ID)")
             else:  # Auto
                 detection_info.insert(tk.END, f"\n\n💡 Auto mode: Using Game Path for game directories")
         else:
+            # Normalize masked path for consistent display
+            display_masked_path = normalize_path_for_display(masked_path)
+            
             detection_info.insert(tk.END, f"ℹ Standard savegame location\n")
             detection_info.insert(tk.END, f"Using standard masking (username, Steam ID)\n")
-            detection_info.insert(tk.END, f"Result: {masked_path}")
+            detection_info.insert(tk.END, f"Result: {display_masked_path}")
             
             if self.path_display_option == "Game Path":
                 detection_info.insert(tk.END, f"\n\n💡 Game Path not applicable for this location")
@@ -333,7 +358,8 @@ class PathPreviewWindow:
         examples_text.config(state=tk.NORMAL)
         examples_text.delete("1.0", tk.END)
         if is_inside_game and relative_path:
-            examples_text.insert("1.0", "Game Path: (path-to-game)/game/saves\n")
+            display_relative_path = normalize_path_for_display(relative_path)
+            examples_text.insert("1.0", f"Game Path: (path-to-game)/{display_relative_path}\n")
             examples_text.insert(tk.END, "Standard: C:/Users/(pc-name)/AppData/...\n")
             examples_text.insert(tk.END, "Auto: Uses Game Path for game directories\n")
             examples_text.insert(tk.END, "\nNote: (path-to-game) will be replaced with actual game folder")
@@ -345,4 +371,6 @@ class PathPreviewWindow:
         examples_text.config(state=tk.DISABLED)
         
         # Close button
-        ttk.Button(self.window, text="Close", command=self.window.destroy).pack(pady=(0, 16)) 
+        close_frame = ttk.Frame(self.window)
+        close_frame.pack(fill=tk.X, padx=8, pady=(0, 8))
+        ttk.Button(close_frame, text="Close", command=self.window.destroy).pack(side=tk.RIGHT) 

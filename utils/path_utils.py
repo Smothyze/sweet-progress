@@ -12,6 +12,13 @@ def normalize_path(path):
         return path
     return str(Path(path))
 
+def normalize_path_for_display(path):
+    """Normalize path for display purposes - always use forward slashes"""
+    if not path:
+        return path
+    # Convert to forward slashes for consistent display
+    return str(Path(path)).replace('\\', '/')
+
 def replace_username_in_path(path):
     """Replace username in path with current username"""
     if not path:

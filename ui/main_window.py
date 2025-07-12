@@ -6,7 +6,7 @@ import webbrowser
 
 from config.config_manager import ConfigManager
 from backup.backup_manager import BackupManager
-from utils.path_utils import validate_path, validate_game_title, detect_game_directory, get_current_username
+from utils.path_utils import validate_path, validate_game_title, detect_game_directory, get_current_username, normalize_path_for_display
 from utils.resource_utils import ICON_PATH
 from ui.windows import GameListWindow, CreditSettingWindow, PathPreviewWindow
 
@@ -412,13 +412,14 @@ class SaveGameBackupApp:
             preference = self.path_display_option.get()
             if is_inside_game and relative_path:
                 game_name = os.path.basename(game_dir)
+                display_relative_path = normalize_path_for_display(relative_path)
                 self.game_dir_info.set(f"✓ Game detected: {game_name}")
                 if preference == "Game Path":
-                    self.game_dir_action.set(f"Will use: (path-to-game)/{relative_path}")
+                    self.game_dir_action.set(f"Will use: (path-to-game)/{display_relative_path}")
                 elif preference == "Standard":
                     self.game_dir_action.set(f"Will use: Standard masking")
                 else:  # Auto
-                    self.game_dir_action.set(f"Will use: (path-to-game)/{relative_path}")
+                    self.game_dir_action.set(f"Will use: (path-to-game)/{display_relative_path}")
             else:
                 self.game_dir_info.set(f"ℹ Standard savegame location")
                 if preference == "Game Path":

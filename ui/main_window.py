@@ -466,7 +466,7 @@ class SaveGameBackupApp:
         """Show application information with hyperlink on 'Smothy'."""
         about_window = tk.Toplevel(self.root)
         about_window.title("Info")
-        about_window.geometry("430x200")
+        about_window.geometry("430x220")
         about_window.resizable(False, False)
 
         # Apply icon to info window
@@ -484,18 +484,26 @@ class SaveGameBackupApp:
 
         # Separator line
         sep = ttk.Separator(about_window, orient="horizontal")
-        sep.pack(fill="x", padx=20, pady=(8, 10))
+        sep.pack(fill="x", padx=20, pady=(8, 15))
 
-        # Info text
-        info_text = "Making game save backups simple, reliable, and maintainable!\nCreated by "
-        label = tk.Label(about_window, text=info_text, font=("Segoe UI", 10), justify=tk.LEFT, anchor="w")
-        label.pack(anchor="w", padx=28, pady=(0, 0))
+        # Main info text
+        info_text = "Making game save backups simple, reliable, and maintainable!"
+        info_label = tk.Label(about_window, text=info_text, font=("Segoe UI", 10), justify=tk.CENTER, anchor="center")
+        info_label.pack(fill="x", padx=20, pady=(0, 10))
 
+        # Created by section - centered
+        created_by_frame = tk.Frame(about_window)
+        created_by_frame.pack(fill="x", pady=(5, 0))
+        
+        # "Created by" text
+        created_by_label = tk.Label(created_by_frame, text="Created by", font=("Segoe UI", 10), anchor="center")
+        created_by_label.pack(expand=True)
+        
         # Hyperlink label
-        link = tk.Label(about_window, text="Smothy", font=("Segoe UI", 10, "underline"), fg="blue", cursor="hand2")
-        link.pack(anchor="w", padx=28)
+        link = tk.Label(created_by_frame, text="Smothy", font=("Segoe UI", 10, "underline"), fg="blue", cursor="hand2")
+        link.pack(expand=True)
         link.bind("<Button-1>", lambda e: webbrowser.open_new("https://guns.lol/smothyze"))
 
         # Close button
         close_btn = ttk.Button(about_window, text="Close", command=about_window.destroy)
-        close_btn.pack(pady=15) 
+        close_btn.pack(pady=20) 

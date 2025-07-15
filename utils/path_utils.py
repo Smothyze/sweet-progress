@@ -152,7 +152,7 @@ def mask_game_path_in_savegame_location(savegame_path, preference="Auto"):
     
     if preference == "Game Path" or (preference == "Auto" and is_inside_game and relative_path):
         # Return path with consistent placeholder
-        return f"(path-to-game)/{relative_path}"
+        return f"(path-to-game)/{normalize_path_for_display(relative_path)}"
     else:
         # Use existing masking for non-game paths or when Standard is selected
         masked_path = mask_steamid_in_path(savegame_path)

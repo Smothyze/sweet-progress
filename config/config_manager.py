@@ -135,12 +135,12 @@ class ConfigManager:
         return game_id
     
     def update_last_used(self, game_title, savegame_location, backup_location):
-        """Update last used configuration"""
-        self.config["last_used"] = {
-            "game_title": game_title,
-            "savegame_location": savegame_location,
-            "backup_location": backup_location
-        }
+        """Update last used configuration, tanpa menghapus field lain seperti author"""
+        if "last_used" not in self.config or not isinstance(self.config["last_used"], dict):
+            self.config["last_used"] = {}
+        self.config["last_used"]["game_title"] = game_title
+        self.config["last_used"]["savegame_location"] = savegame_location
+        self.config["last_used"]["backup_location"] = backup_location
     
     def update_backup_history(self, game_id, timestamp):
         """Update backup history with timestamp"""

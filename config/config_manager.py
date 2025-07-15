@@ -135,7 +135,7 @@ class ConfigManager:
         return game_id
     
     def update_last_used(self, game_title, savegame_location, backup_location):
-        """Update last used configuration, tanpa menghapus field lain seperti author"""
+        """Update last used configuration without removing other fields such as author"""
         if "last_used" not in self.config or not isinstance(self.config["last_used"], dict):
             self.config["last_used"] = {}
         self.config["last_used"]["game_title"] = game_title

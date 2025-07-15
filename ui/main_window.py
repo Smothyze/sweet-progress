@@ -154,7 +154,7 @@ class SaveGameBackupApp:
         # Load preferences
         self.load_preferences()
         
-        # Tombol Create Backup
+        # Create Backup Button
         self.create_backup_btn = ttk.Button(main_frame, text="Create Backup", command=self.create_backup)
         self.create_backup_btn.grid(row=12, column=1, pady=20)
         self.validate_inputs()  # Set initial state

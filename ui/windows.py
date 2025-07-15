@@ -183,7 +183,7 @@ class CreditSettingWindow:
         self.note_text = tk.Text(self.window, width=36, height=5, wrap=tk.WORD)
         self.note_text.grid(row=3, column=1, sticky=tk.EW, pady=(0, 8), padx=(0, 16))
 
-        # Frame untuk tombol
+        # Frame for buttons
         btn_frame = ttk.Frame(self.window)
         btn_frame.grid(row=4, column=0, columnspan=2, pady=(8, 16), padx=16, sticky=tk.E)
 

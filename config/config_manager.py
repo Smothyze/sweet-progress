@@ -1,7 +1,11 @@
 import json
 import os
+from typing import Dict, List, Tuple, Optional, Any
 from utils.path_utils import replace_username_in_path
 from utils.resource_utils import CONFIG_PATH, RESOURCE_DIR
+from utils.logger import logger
+from utils.exceptions import ConfigError
+from utils.constants import MAX_RECENT_GAMES
 import uuid
 
 class ConfigManager:
@@ -9,7 +13,7 @@ class ConfigManager:
         self.config_file = CONFIG_PATH
         self.config = self.load_config()
     
-    def load_config(self):
+    def load_config(self) -> Dict[str, Any]:
         """Load configuration from file"""
         default_config = {
             "games": {},
@@ -39,6 +43,7 @@ class ConfigManager:
                         }
                     config["games"] = migrated_games
                     self.save_config_migrated(config)
+                
                 # Ensure every entry has an id and game_title
                 for gid, game in config["games"].items():
                     if "id" not in game:
@@ -57,31 +62,41 @@ class ConfigManager:
                     last_used["savegame_location"] = replace_username_in_path(last_used.get("savegame_location", ""))
                     last_used["backup_location"] = replace_username_in_path(last_used.get("backup_location", ""))
                 
+                logger.info(f"Configuration loaded successfully from: {CONFIG_PATH}")
                 return config
             else:
                 # Create config directory if it doesn't exist
                 os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
                 with open(CONFIG_PATH, "w", encoding='utf-8') as f:
                     json.dump(default_config, f, indent=4)
-                print(f"Created new config file at: {CONFIG_PATH}")
+                logger.info(f"Created new config file at: {CONFIG_PATH}")
                 return default_config
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in config file: {e}")
+            raise ConfigError(f"Invalid configuration file format: {e}")
+        except PermissionError as e:
+            logger.error(f"Permission denied accessing config file: {e}")
+            raise ConfigError(f"Cannot access configuration file: {e}")
         except Exception as e:
-            print(f"Error loading config: {e}")
-            return default_config
+            logger.error(f"Unexpected error loading config: {e}")
+            raise ConfigError(f"Failed to load configuration: {e}")
     
-    def save_config(self):
+    def save_config(self) -> None:
         """Save configuration to file"""
         try:
             if not os.path.exists(RESOURCE_DIR):
                 os.makedirs(RESOURCE_DIR)
-                print(f"Created Resource directory at: {RESOURCE_DIR}")
+                logger.info(f"Created Resource directory at: {RESOURCE_DIR}")
                 
             with open(CONFIG_PATH, "w", encoding='utf-8') as f:
                 json.dump(self.config, f, indent=4)
-            print(f"Config saved successfully to: {CONFIG_PATH}")
+            logger.info(f"Config saved successfully to: {CONFIG_PATH}")
+        except PermissionError as e:
+            logger.error(f"Permission denied saving config: {e}")
+            raise ConfigError(f"Cannot save configuration file: {e}")
         except Exception as e:
-            print(f"Error saving config: {e}")
-            raise Exception(f"Failed to save configuration: {str(e)}")
+            logger.error(f"Error saving config: {e}")
+            raise ConfigError(f"Failed to save configuration: {str(e)}")
     
     def save_config_migrated(self, config):
         try:

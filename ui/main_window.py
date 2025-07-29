@@ -3,19 +3,26 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from datetime import datetime
 import webbrowser
+from typing import Optional
 
 from config.config_manager import ConfigManager
 from backup.backup_manager import BackupManager
 from utils.path_utils import validate_path, validate_game_title, detect_game_directory, get_current_username, normalize_path_for_display
 from utils.resource_utils import ICON_PATH
+from utils.logger import logger
+from utils.exceptions import SweetProgressError, ValidationError
+from utils.constants import (
+    APP_NAME, WINDOW_WIDTH, WINDOW_HEIGHT, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT,
+    MAX_LOG_LINES, MAX_RECENT_GAMES, DEFAULT_AUTHOR
+)
 from ui.windows import GameListWindow, CreditSettingWindow, PathPreviewWindow
 
 class SaveGameBackupApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Sweet Progress")
-        self.root.geometry("600x500")
-        self.root.minsize(600, 500)
+        self.root.title(APP_NAME)
+        self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
+        self.root.minsize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
         
         # Add menu bar
         self.menu_bar = tk.Menu(self.root)
@@ -36,9 +43,9 @@ class SaveGameBackupApp:
             try:
                 self.root.iconbitmap(ICON_PATH)
             except Exception as e:
-                print(f"Error loading icon: {e}")
+                logger.warning(f"Error loading icon: {e}")
         else:
-            print(f"Warning: Icon file not found at {ICON_PATH}")
+            logger.warning(f"Icon file not found at {ICON_PATH}")
         
         # Initialize managers
         self.config_manager = ConfigManager()
@@ -52,7 +59,7 @@ class SaveGameBackupApp:
         
         # Initialize log line counter
         self.log_line_count = 0
-        self.max_log_lines = 1000
+        self.max_log_lines = MAX_LOG_LINES
         
         self._selected_game_id = None
         
@@ -289,10 +296,10 @@ class SaveGameBackupApp:
             self.progress_var.set(0)
             self.root.update()
             
-            # Get author from config
+            # Get author from config or use default
             author = self.config_manager.config.get("last_used", {}).get("author", "").strip()
             if not author:
-                author = get_current_username()
+                author = DEFAULT_AUTHOR
             
             # Create backup
             self.backup_manager.create_backup(

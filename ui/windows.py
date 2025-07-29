@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 import os
 from utils.resource_utils import ICON_PATH
 from utils.path_utils import detect_game_directory, mask_game_path_in_savegame_location, normalize_path_for_display
+from utils.constants import DEFAULT_AUTHOR
 
 # Utility function for consistent toplevel window creation
 def create_toplevel_window(parent, title, geometry, icon_path=ICON_PATH):
@@ -152,7 +153,10 @@ class CreditSettingWindow:
         ttk.Separator(main_frame, orient="horizontal").grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
         # Author
         ttk.Label(main_frame, text="Author:").grid(row=2, column=0, sticky=tk.W, pady=(0, 8))
-        self.author_var = tk.StringVar(value=self.config_manager.config.get("last_used", {}).get("author", ""))
+        # Get author from config or use default
+        saved_author = self.config_manager.config.get("last_used", {}).get("author", "").strip()
+        default_author = saved_author if saved_author else DEFAULT_AUTHOR
+        self.author_var = tk.StringVar(value=default_author)
         author_entry = ttk.Entry(main_frame, textvariable=self.author_var, width=36)
         author_entry.grid(row=2, column=1, sticky=tk.EW, pady=(0, 8))
         # Note

@@ -1,17 +1,47 @@
-# Configuration file
+# Configuration files
 savegame_config.json
+Resource/savegame_config.json
 
 # Build directories
 build/
 dist/
+*.egg-info/
 
 # Python cache files
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Log files
+logs/
+*.log
 
 # IDE files
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# Windows specific
-*.exe 
+# OS specific
+.DS_Store
+Thumbs.db
+*.exe
+*.msi
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Distribution
+*.tar.gz
+*.zip 

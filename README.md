@@ -3,8 +3,35 @@
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-Modular-orange.svg)
+![Version](https://img.shields.io/badge/Version-2.5.5-brightgreen.svg)
+![Type Hints](https://img.shields.io/badge/Type%20Hints-Enabled-blue.svg)
 
-A Python-based GUI application for backing up game save files with advanced features, improved user experience, and modular architecture for easy maintenance and extensibility.
+A Python-based GUI application for backing up game save files with advanced features, improved user experience, modular architecture, and professional code quality standards for easy maintenance and extensibility.
+
+## What's New in v2.5.5
+
+### 🚀 Major Improvements
+- **Auto-Author Detection**: Automatically uses system username as default author
+- **Professional Logging**: Centralized logging system with file rotation and multiple log levels
+- **Type Safety**: Comprehensive type hints throughout the codebase
+- **Custom Exceptions**: Specific error handling for different scenarios
+- **Constants Management**: Eliminated magic numbers and hardcoded values
+- **Dependency Management**: Added requirements.txt and setup.py for easy installation
+
+### 🔧 Technical Enhancements
+- Replaced print() statements with proper logging
+- Added specific exception classes (ConfigError, BackupError, PathError, etc.)
+- Implemented type hints for better IDE support and code safety
+- Centralized configuration values in utils/constants.py
+- Enhanced error handling with detailed error messages
+- Added comprehensive .gitignore for better repository management
+
+### 📁 New Files
+- `utils/logger.py` - Centralized logging system
+- `utils/exceptions.py` - Custom exception classes
+- `utils/constants.py` - Configuration constants
+- `requirements.txt` - Dependency management
+- `setup.py` - Installation and distribution script
 
 ## Features
 
@@ -12,13 +39,14 @@ A Python-based GUI application for backing up game save files with advanced feat
 - **Game Save Backup**: Create backups of game save files with customizable locations
 - **Timestamp Support**: Optional timestamped backup folders for version control
 - **Cross-Platform**: Works on Windows, Linux, and macOS
+- **Auto-Author Detection**: Automatically uses system username as default author
 - **Credit System**: Add author information and notes to backup files
 - **Smart Path Detection**: Automatically detect game directories and provide path masking options
 
 ### Enhanced User Interface
 - **Smart Dropdown**: Game list ordered by last backup time (newest first, limited to 5 items)
 - **Progress Bar**: Real-time progress indication during backup operations
-- **Enhanced Logging**: Timestamped log entries with automatic rotation
+- **Professional Logging**: Centralized logging system with file rotation and multiple log levels
 - **Game List Window**: Table format with Game Title and Last Used columns, plus sorting options (Alphabetical/Last Used)
 - **Path Preview**: Preview how paths will appear in README.txt files
 - **Input Validation**: Comprehensive validation for paths and game titles
@@ -26,9 +54,12 @@ A Python-based GUI application for backing up game save files with advanced feat
 ### Security & Reliability
 - **Path Validation**: Ensures all paths are valid and accessible
 - **Permission Checking**: Verifies write permissions before backup
-- **Error Handling**: Robust error handling with informative messages
+- **Advanced Error Handling**: Custom exception classes with specific error types and detailed logging
 - **Memory Management**: Automatic log rotation to prevent memory issues
 - **Path Masking**: Secure sharing of savegame locations with username and Steam ID masking
+- **Type Safety**: Comprehensive type hints throughout the codebase for better code quality
+- **Professional Logging**: Centralized logging system with file rotation and multiple log levels
+- **Custom Exceptions**: Specific error handling for different scenarios with detailed error messages
 
 ## Architecture
 
@@ -38,9 +69,14 @@ The application follows a modular architecture for better maintainability and ex
 sweet-progress/
 ├── program.py              # Main entry point
 ├── README.md               # This file
+├── setup.py                # Installation and distribution script
+├── requirements.txt        # Dependency management
 ├── icon-v2.png             # Application icon
 ├── utils/                  # Utility modules
 │   ├── __init__.py
+│   ├── constants.py        # Configuration constants
+│   ├── exceptions.py       # Custom exception classes
+│   ├── logger.py           # Centralized logging system
 │   ├── path_utils.py       # Path handling and validation
 │   └── resource_utils.py   # Resource path management
 ├── config/                 # Configuration management
@@ -54,16 +90,17 @@ sweet-progress/
 │   ├── main_window.py      # Main application window
 │   └── windows.py          # Additional windows (list, settings, preview)
 └── Resource/
-    └── icon.ico            # Windows icon file
+   ├── icon.ico            # Windows icon file
+   └── logs/               # Log files directory (auto-created)
 ```
 
 ### Module Overview
 
-- **`utils/`**: Contains utility functions for path handling, validation, and resource management
+- **`utils/`**: Contains utility functions for path handling, validation, resource management, logging, constants, and custom exceptions
 - **`config/`**: Manages application configuration, preferences, and backup history
 - **`backup/`**: Handles all backup-related operations with progress tracking
 - **`ui/`**: Contains all user interface components and windows
-- **`program.py`**: Clean entry point that initializes the application
+- **`program.py`**: Clean entry point that initializes the application with enhanced error handling
 
 ## Installation
 
@@ -78,12 +115,23 @@ sweet-progress/
    cd sweet-progress
    ```
 
-2. Ensure the `Resource/icon.ico` file is present
+2. Install dependencies (optional, for development):
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-3. Run the application:
+3. Ensure the `Resource/icon.ico` file is present
+
+4. Run the application:
    ```bash
    python program.py
    ```
+
+### Alternative Installation
+You can also install the package using pip:
+```bash
+pip install -e .
+```
 
 ### Development Setup
 For development and contribution:
@@ -101,7 +149,7 @@ python program.py
 3. **Configure Options**: 
    - **Path Display**: Choose between Auto, Game Path, or Standard masking
    - **Timestamp**: Enable/disable timestamped folders
-   - **Credit Setting**: Set author information and notes
+   - **Credit Setting**: Set author information and notes (author auto-detected from system username)
 4. **Preview Paths**: Use the Preview button to see how paths will appear in README.txt
 5. **Create Backup**: Click "Create Backup" to start the process
 6. **Monitor Progress**: Watch the progress bar and log for real-time updates
@@ -131,7 +179,8 @@ The application automatically creates a configuration file at:
     "last_used": {
         "game_title": "Last Game",
         "savegame_location": "path/to/savegame",
-        "backup_location": "path/to/backup"
+        "backup_location": "path/to/backup",
+        "author": "System Username"
     },
     "backup_history": {
         "<game_id>": "YYYY-MM-DD HH:MM:SS"
@@ -148,6 +197,9 @@ The application automatically creates a configuration file at:
 ### Project Structure
 The application is organized into logical modules:
 
+- **`utils/constants.py`**: Configuration constants and application metadata
+- **`utils/exceptions.py`**: Custom exception classes for better error handling
+- **`utils/logger.py`**: Centralized logging system with file rotation
 - **`utils/path_utils.py`**: Path handling, validation, and masking functions
 - **`utils/resource_utils.py`**: Resource path management and constants
 - **`config/config_manager.py`**: Configuration loading, saving, and management
@@ -166,12 +218,21 @@ The application is organized into logical modules:
 - Use descriptive variable and function names
 - Add docstrings for all public functions
 - Keep modules focused on single responsibilities
+- Use type hints for better code safety and IDE support
+- Implement proper error handling with custom exceptions
+- Use centralized logging instead of print statements
 
 ## Requirements
 
 - Python 3.8+
 - tkinter (usually included with Python)
-- Standard library modules: os, shutil, json, datetime, sys, getpass, pathlib
+- Standard library modules: os, shutil, json, datetime, sys, getpass, pathlib, logging
+
+### Development Requirements (Optional)
+- pytest>=7.0.0 (for testing)
+- black>=22.0.0 (for code formatting)
+- flake8>=5.0.0 (for linting)
+- mypy>=1.0.0 (for type checking)
 
 ## Troubleshooting
 
@@ -180,12 +241,16 @@ The application is organized into logical modules:
 2. **Permission errors**: Check write permissions for backup location
 3. **Path issues**: Use absolute paths or ensure relative paths are correct
 4. **Import errors**: Ensure all modules are in the correct directories
+5. **Logging issues**: Check `Resource/logs/` directory for log files
+6. **Configuration errors**: Verify `Resource/savegame_config.json` is valid JSON
 
 ### Error Messages
 - **"Path is not writable"**: Check folder permissions
 - **"Invalid game title"**: Avoid special characters in game names
 - **"Source folder not found"**: Verify savegame location exists
 - **"Module not found"**: Check that all required modules are present
+- **"Configuration error"**: Check log files for detailed error information
+- **"Logging error"**: Ensure write permissions for Resource/logs directory
 
 ## Contributing
 
@@ -201,10 +266,13 @@ We welcome contributions! Here's how you can help:
 
 ### Development Guidelines
 - Follow the existing modular architecture
-- Add appropriate error handling
+- Add appropriate error handling with custom exceptions
+- Use type hints for all new functions and classes
+- Implement proper logging instead of print statements
 - Update documentation for new features
 - Test on multiple platforms if possible
 - Keep commits atomic and well-described
+- Follow the established code style with constants and proper error handling
 
 ## License
 
@@ -215,9 +283,10 @@ This project is open source and available under the MIT License. See the [LICENS
 - Built with Python and tkinter
 - Icons and resources included in the project
 - Community feedback and contributions
+- Enhanced with modern Python development practices (type hints, logging, custom exceptions)
 
 ---
 
 **Sweet Progress** - Making game save backups simple, reliable, and maintainable! 🎮✨
 
-*Built with modular architecture for the future.*
+*Built with modular architecture and modern Python practices for the future.*

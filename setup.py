@@ -20,7 +20,7 @@ setup(
     name="sweet-progress",
     version="2.5.5",
     author="Smothyze",
-    author_email="your.email@example.com",
+    author_email="smothyze@gmail.com",
     description="A Python-based GUI application for backing up game save files",
     long_description=read_readme(),
     long_description_content_type="text/markdown",

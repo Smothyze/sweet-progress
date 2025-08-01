@@ -359,13 +359,19 @@ class SaveGameBackupApp:
         CreditSettingWindow(
             self.root,
             self.config_manager,
-            self.on_credit_saved
+            self.on_credit_saved,
+            self.on_credit_reset
         )
     
     def on_credit_saved(self, author, note):
         """Callback when credit is saved"""
         self._credit_note = note
         self.log("Credit setting saved (Author dan Note).")
+    
+    def on_credit_reset(self):
+        """Callback when credit is reset"""
+        self._credit_note = ""
+        self.log("Credit setting reset - Author cleared.")
     
     def show_path_preview(self):
         """Show path preview window"""

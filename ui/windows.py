@@ -138,10 +138,11 @@ class GameListWindow:
             self.delete_btn.state(["disabled"])
 
 class CreditSettingWindow:
-    def __init__(self, parent, config_manager, on_save_callback):
+    def __init__(self, parent, config_manager, on_save_callback, on_reset_callback=None):
         self.parent = parent
         self.config_manager = config_manager
         self.on_save_callback = on_save_callback
+        self.on_reset_callback = on_reset_callback
         self.window = create_toplevel_window(parent, "Credit Setting", "420x240")
         self.create_widgets()
 
@@ -169,6 +170,7 @@ class CreditSettingWindow:
         self.save_btn = ttk.Button(btn_frame, text="Save", state=tk.DISABLED, command=self.save_credit)
         self.save_btn.pack(side=tk.RIGHT, padx=(8, 0))
         ttk.Button(btn_frame, text="Cancel", command=self.window.destroy).pack(side=tk.RIGHT, padx=(0, 8))
+        ttk.Button(btn_frame, text="Reset", command=self.reset_credit).pack(side=tk.RIGHT, padx=(0, 8))
         # Bind validation
         self.author_var.trace_add("write", self.validate_save_btn)
         self.note_text.bind("<KeyRelease>", lambda e: self.validate_save_btn())
@@ -201,6 +203,26 @@ class CreditSettingWindow:
             self.window.destroy()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save credit settings: {str(e)}")
+    
+    def reset_credit(self):
+        """Reset credit settings - clear author and close window"""
+        try:
+            # Clear author from config
+            if "last_used" in self.config_manager.config:
+                self.config_manager.config["last_used"]["author"] = ""
+                self.config_manager.save_config()
+            
+            # Clear the input fields
+            self.author_var.set("")
+            self.note_text.delete("1.0", tk.END)
+            
+            # Call reset callback if provided
+            if self.on_reset_callback:
+                self.on_reset_callback()
+            
+            self.window.destroy()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to reset credit settings: {str(e)}")
 
 class PathPreviewWindow:
     def __init__(self, parent, savegame_location, path_display_option):

@@ -166,11 +166,11 @@ class CreditSettingWindow:
         self.note_text.grid(row=3, column=1, sticky=tk.EW, pady=(0, 8))
         # Button frame
         btn_frame = ttk.Frame(main_frame)
-        btn_frame.grid(row=4, column=0, columnspan=2, sticky=tk.E, pady=(8, 0))
+        btn_frame.grid(row=4, column=0, columnspan=2, sticky=tk.EW, pady=(8, 0))
+        ttk.Button(btn_frame, text="Reset", command=self.reset_credit).pack(side=tk.LEFT, padx=5)
         self.save_btn = ttk.Button(btn_frame, text="Save", state=tk.DISABLED, command=self.save_credit)
-        self.save_btn.pack(side=tk.RIGHT, padx=(8, 0))
-        ttk.Button(btn_frame, text="Cancel", command=self.window.destroy).pack(side=tk.RIGHT, padx=(0, 8))
-        ttk.Button(btn_frame, text="Reset", command=self.reset_credit).pack(side=tk.RIGHT, padx=(0, 8))
+        self.save_btn.pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="Cancel", command=self.window.destroy).pack(side=tk.RIGHT, padx=5)
         # Bind validation
         self.author_var.trace_add("write", self.validate_save_btn)
         self.note_text.bind("<KeyRelease>", lambda e: self.validate_save_btn())

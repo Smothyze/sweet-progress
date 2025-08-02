@@ -156,7 +156,13 @@ class CreditSettingWindow:
         ttk.Label(main_frame, text="Author:").grid(row=2, column=0, sticky=tk.W, pady=(0, 8))
         # Get author from config or use default
         saved_author = self.config_manager.config.get("last_used", {}).get("author", "").strip()
-        default_author = saved_author if saved_author else DEFAULT_AUTHOR
+        # Check if author was explicitly reset (empty string in config means reset)
+        if "last_used" in self.config_manager.config and "author" in self.config_manager.config["last_used"]:
+            # Author was explicitly reset, use empty string
+            default_author = saved_author
+        else:
+            # Author was never set, use default
+            default_author = saved_author if saved_author else DEFAULT_AUTHOR
         self.author_var = tk.StringVar(value=default_author)
         author_entry = ttk.Entry(main_frame, textvariable=self.author_var, width=36)
         author_entry.grid(row=2, column=1, sticky=tk.EW, pady=(0, 8))

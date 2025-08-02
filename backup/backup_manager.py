@@ -114,7 +114,16 @@ class BackupManager:
                 credit_file.write(f"{separator}\n")
                 credit_file.write(f"\n")
                 credit_file.write(f"Author:\n")
-                credit_file.write(f"{author}\n")
+                if author:
+                    credit_file.write(f"{author}\n")
+                else:
+                    # If author is empty, use system username as fallback for display
+                    import getpass
+                    try:
+                        system_author = getpass.getuser()
+                        credit_file.write(f"{system_author}\n")
+                    except Exception:
+                        credit_file.write(f"User\n")
                 credit_file.write(f"\n")
                 if credit_note:
                     credit_file.write(f"Note:\n{credit_note}\n\n")

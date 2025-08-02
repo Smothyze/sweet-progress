@@ -299,7 +299,13 @@ class SaveGameBackupApp:
             # Get author from config or use default
             author = self.config_manager.config.get("last_used", {}).get("author", "").strip()
             if not author:
-                author = DEFAULT_AUTHOR
+                # Check if author was explicitly reset (empty string in config means reset)
+                if "last_used" in self.config_manager.config and "author" in self.config_manager.config["last_used"]:
+                    # Author was explicitly reset, use empty string
+                    author = ""
+                else:
+                    # Author was never set, use default
+                    author = DEFAULT_AUTHOR
             
             # Create backup
             self.backup_manager.create_backup(

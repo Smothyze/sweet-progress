@@ -8,31 +8,6 @@
 
 A Python-based GUI application for backing up game save files with advanced features, improved user experience, modular architecture, and professional code quality standards for easy maintenance and extensibility.
 
-## What's New in v2.5.5
-
-### 🚀 Major Improvements
-- **Auto-Author Detection**: Automatically uses system username as default author
-- **Professional Logging**: Centralized logging system with file rotation and multiple log levels
-- **Type Safety**: Comprehensive type hints throughout the codebase
-- **Custom Exceptions**: Specific error handling for different scenarios
-- **Constants Management**: Eliminated magic numbers and hardcoded values
-- **Dependency Management**: Added requirements.txt and setup.py for easy installation
-
-### 🔧 Technical Enhancements
-- Replaced print() statements with proper logging
-- Added specific exception classes (ConfigError, BackupError, PathError, etc.)
-- Implemented type hints for better IDE support and code safety
-- Centralized configuration values in utils/constants.py
-- Enhanced error handling with detailed error messages
-- Added comprehensive .gitignore for better repository management
-
-### 📁 New Files
-- `utils/logger.py` - Centralized logging system
-- `utils/exceptions.py` - Custom exception classes
-- `utils/constants.py` - Configuration constants
-- `requirements.txt` - Dependency management
-- `setup.py` - Installation and distribution script
-
 ## Features
 
 ### Core Functionality

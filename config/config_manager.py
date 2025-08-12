@@ -174,6 +174,18 @@ class ConfigManager:
         if "backup_history" in self.config and game_id in self.config["backup_history"]:
             del self.config["backup_history"][game_id]
     
+    def rename_game(self, game_id, new_title):
+        """Rename game title for existing game"""
+        if game_id in self.config["games"]:
+            # Check if new title already exists for different game
+            existing_id = self.get_game_id_by_title(new_title)
+            if existing_id and existing_id != game_id:
+                raise ValueError(f"Game title '{new_title}' already exists")
+            
+            self.config["games"][game_id]["game_title"] = new_title
+            return True
+        return False
+    
     def get_preferences(self):
         """Get user preferences"""
         return self.config.get("preferences", {

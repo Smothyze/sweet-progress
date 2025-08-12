@@ -29,6 +29,8 @@ class SaveGameBackupApp:
         # File menu
         file_menu = tk.Menu(self.menu_bar, tearoff=0)
         file_menu.add_command(label="New", command=self.clear_all_inputs)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.root.quit)
         self.menu_bar.add_cascade(label="File", menu=file_menu)
         # About menu
         about_menu = tk.Menu(self.menu_bar, tearoff=0)
@@ -336,7 +338,8 @@ class SaveGameBackupApp:
             self.root,
             self.config_manager,
             self.on_game_selected_from_list,
-            self.on_game_deleted_from_list
+            self.on_game_deleted_from_list,
+            self.on_game_renamed_from_list
         )
     
     def on_game_selected_from_list(self, gid):
@@ -359,6 +362,13 @@ class SaveGameBackupApp:
             self.backup_location.set("")
         game = self.config_manager.get_game_by_id(gid)
         self.log(f"Game '{game.get('game_title', gid) if game else gid}' has been deleted from the list.")
+    
+    def on_game_renamed_from_list(self, gid, old_title, new_title):
+        """Callback when game is renamed from list"""
+        self.update_dropdown_values()
+        if self._selected_game_id == gid:
+            self.game_title.set(new_title)
+        self.log(f"Game title renamed from '{old_title}' to '{new_title}'")
     
     def open_credit_setting(self):
         """Open credit setting window"""

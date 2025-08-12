@@ -21,11 +21,12 @@ def create_toplevel_window(parent, title, geometry, icon_path=ICON_PATH):
     return window
 
 class GameListWindow:
-    def __init__(self, parent, config_manager, on_game_selected_callback, on_game_deleted_callback):
+    def __init__(self, parent, config_manager, on_game_selected_callback, on_game_deleted_callback, on_game_renamed_callback=None):
         self.parent = parent
         self.config_manager = config_manager
         self.on_game_selected_callback = on_game_selected_callback
         self.on_game_deleted_callback = on_game_deleted_callback
+        self.on_game_renamed_callback = on_game_renamed_callback
 
         self.window = create_toplevel_window(parent, "Game Title List", "500x500")
         self.create_widgets()
@@ -67,8 +68,10 @@ class GameListWindow:
         btn_frame = ttk.Frame(self.window)
         btn_frame.pack(fill=tk.X, padx=16, pady=(0, 12))
         self.select_btn = ttk.Button(btn_frame, text="Select", command=self.select_game, state=tk.DISABLED)
+        self.rename_btn = ttk.Button(btn_frame, text="Rename", command=self.rename_game, state=tk.DISABLED)
         self.delete_btn = ttk.Button(btn_frame, text="Delete", command=self.delete_game, state=tk.DISABLED)
         self.select_btn.pack(side=tk.LEFT, padx=5)
+        self.rename_btn.pack(side=tk.LEFT, padx=5)
         self.delete_btn.pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="Close", command=self.window.destroy).pack(side=tk.RIGHT, padx=5)
 
@@ -127,14 +130,100 @@ class GameListWindow:
                 except Exception as e:
                     messagebox.showerror("Error", f"Failed to delete game: {str(e)}")
     
+    def rename_game(self):
+        """Rename game title"""
+        selection = self.tree.selection()
+        if selection:
+            gid = selection[0]
+            game = self.config_manager.get_game_by_id(gid)
+            if game:
+                current_title = game.get('game_title', gid)
+                
+                # Create rename dialog
+                rename_dialog = tk.Toplevel(self.window)
+                rename_dialog.title("Rename Game Title")
+                rename_dialog.geometry("450x250")
+                rename_dialog.transient(self.window)
+                rename_dialog.grab_set()
+                rename_dialog.resizable(False, False)
+                
+                # Center the dialog
+                rename_dialog.geometry("+%d+%d" % (
+                    self.window.winfo_rootx() + 50,
+                    self.window.winfo_rooty() + 50
+                ))
+                
+                # Create widgets
+                main_frame = ttk.Frame(rename_dialog, padding=16)
+                main_frame.pack(fill=tk.BOTH, expand=True)
+                
+                # Header
+                ttk.Label(main_frame, text="Rename Game Title", font=("Segoe UI", 12, "bold")).pack(anchor=tk.W, pady=(0, 4))
+                ttk.Separator(main_frame, orient="horizontal").pack(fill=tk.X, pady=(0, 16))
+                
+                # Current title info
+                ttk.Label(main_frame, text="Current Title:", font=("Segoe UI", 9, "bold")).pack(anchor=tk.W, pady=(0, 4))
+                current_label = ttk.Label(main_frame, text=current_title, foreground="gray")
+                current_label.pack(anchor=tk.W, pady=(0, 16))
+                
+                # New title input
+                ttk.Label(main_frame, text="New Title:", font=("Segoe UI", 9, "bold")).pack(anchor=tk.W, pady=(0, 8))
+                title_var = tk.StringVar(value=current_title)
+                title_entry = ttk.Entry(main_frame, textvariable=title_var, width=50)
+                title_entry.pack(fill=tk.X, pady=(0, 20))
+                title_entry.select_range(0, tk.END)
+                title_entry.focus()
+                
+                # Button frame
+                btn_frame = ttk.Frame(main_frame)
+                btn_frame.pack(fill=tk.X)
+                ttk.Button(btn_frame, text="Cancel", command=rename_dialog.destroy).pack(side=tk.RIGHT, padx=5)
+                ttk.Button(btn_frame, text="Save", command=lambda: self._perform_rename(gid, title_var.get().strip(), rename_dialog)).pack(side=tk.RIGHT, padx=5)
+                
+                # Bind Enter key to rename
+                title_entry.bind("<Return>", lambda e: self._perform_rename(gid, title_var.get().strip(), rename_dialog))
+                title_entry.bind("<Escape>", lambda e: rename_dialog.destroy)
+    
+    def _perform_rename(self, gid, new_title, dialog):
+        """Perform the actual rename operation"""
+        if not new_title:
+            messagebox.showerror("Error", "Game title cannot be empty")
+            return
+        
+        try:
+            self.config_manager.rename_game(gid, new_title)
+            self.config_manager.save_config()
+            
+            # Update the tree view
+            self.refresh_table()
+            
+            # Show success message
+            messagebox.showinfo("Success", f"Game title renamed to '{new_title}'")
+            
+            # Close the dialog
+            dialog.destroy()
+            
+            # Call the callback if provided
+            if self.on_game_renamed_callback:
+                game = self.config_manager.get_game_by_id(gid)
+                old_title = game.get('game_title', gid) if game else gid
+                self.on_game_renamed_callback(gid, old_title, new_title)
+            
+        except ValueError as e:
+            messagebox.showerror("Error", str(e))
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to rename game: {str(e)}")
+    
     def update_buttons_state(self, event=None):
         """Update button states based on selection"""
         selection = self.tree.selection()
         if selection:
             self.select_btn.state(["!disabled"])
+            self.rename_btn.state(["!disabled"])
             self.delete_btn.state(["!disabled"])
         else:
             self.select_btn.state(["disabled"])
+            self.rename_btn.state(["disabled"])
             self.delete_btn.state(["disabled"])
 
 class CreditSettingWindow:

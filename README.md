@@ -6,8 +6,6 @@
 ![Version](https://img.shields.io/badge/Version-2.6.1-brightgreen.svg)
 ![Type Hints](https://img.shields.io/badge/Type%20Hints-Enabled-blue.svg)
 
-A Python-based GUI application for backing up game save files with advanced features, improved user experience, modular architecture, and professional code quality standards for easy maintenance and extensibility.
-
 ## Features
 
 ### Core Functionality

@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-Modular-orange.svg)
-![Version](https://img.shields.io/badge/Version-2.5.5-brightgreen.svg)
+![Version](https://img.shields.io/badge/Version-2.6.1-brightgreen.svg)
 ![Type Hints](https://img.shields.io/badge/Type%20Hints-Enabled-blue.svg)
 
 A Python-based GUI application for backing up game save files with advanced features, improved user experience, modular architecture, and professional code quality standards for easy maintenance and extensibility.
@@ -17,6 +17,7 @@ A Python-based GUI application for backing up game save files with advanced feat
 - **Auto-Author Detection**: Automatically uses system username as default author
 - **Credit System**: Add author information and notes to backup files
 - **Smart Path Detection**: Automatically detect game directories and provide path masking options
+- **Steam Folder Detection**: Automatically detect Steam installation paths and mark them as "(steam-folder)" in README files
 
 ### Enhanced User Interface
 - **Smart Dropdown**: Game list ordered by last backup time (newest first, limited to 5 items)
@@ -31,7 +32,7 @@ A Python-based GUI application for backing up game save files with advanced feat
 - **Permission Checking**: Verifies write permissions before backup
 - **Advanced Error Handling**: Custom exception classes with specific error types and detailed logging
 - **Memory Management**: Automatic log rotation to prevent memory issues
-- **Path Masking**: Secure sharing of savegame locations with username and Steam ID masking
+- **Path Masking**: Secure sharing of savegame locations with username, Steam ID, and Steam folder detection
 - **Type Safety**: Comprehensive type hints throughout the codebase for better code quality
 - **Professional Logging**: Centralized logging system with file rotation and multiple log levels
 - **Custom Exceptions**: Specific error handling for different scenarios with detailed error messages
@@ -166,6 +167,27 @@ The application automatically creates a configuration file at:
     }
 }
 ```
+
+## Path Masking & Steam Detection
+
+### How It Works
+The application automatically detects different types of paths and applies appropriate masking:
+
+1. **Steam Paths**: Any path containing a "Steam" folder is automatically detected and marked as "(steam-folder)" followed by the relative path
+   - Example: `C:\Program Files (x86)\Steam\steamapps\common\GameName\saves` becomes `(steam-folder)/steamapps/common/GameName/saves`
+   - Example: `C:\Program Files (x86)\Steam` becomes `(steam-folder)`
+
+2. **Game Directory Paths**: When a savegame is inside a game directory, it's marked as "(path-to-game)" followed by the relative path
+   - Example: `C:\Games\GameName\saves` becomes `(path-to-game)/saves`
+
+3. **Standard Paths**: For other paths, standard masking is applied:
+   - Username is masked as "(pc-name)"
+   - Steam ID is masked as "(steam-id)"
+
+### Path Display Options
+- **Auto**: Automatically chooses the best masking method based on path type
+- **Game Path**: Always uses game directory masking when possible
+- **Standard**: Always uses standard masking (username, Steam ID)
 
 ## Development
 

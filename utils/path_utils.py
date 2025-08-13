@@ -87,6 +87,34 @@ def mask_steamid_in_path(path):
                 return os.sep.join(parts)
     return path
 
+def detect_steam_folder(path):
+    """
+    Detect if path contains Steam folder and return Steam folder info
+    Returns: (is_steam_path, steam_folder, relative_path) or (False, None, None)
+    """
+    if not path:
+        return False, None, None
+    
+    try:
+        norm_path = normalize_path(path)
+        parts = norm_path.split(os.sep)
+        
+        # Look for Steam folder in the path
+        for i, part in enumerate(parts):
+            if part.lower() == 'steam':
+                steam_folder = os.sep.join(parts[:i+1])
+                # Check if there are more parts after Steam folder
+                if i + 1 < len(parts):
+                    relative_path = os.sep.join(parts[i+1:])
+                else:
+                    relative_path = ""  # Path ends with Steam folder
+                return True, steam_folder, relative_path
+        
+        return False, None, None
+        
+    except Exception:
+        return False, None, None
+
 def detect_game_directory(savegame_path):
     """
     Detect if savegame is inside a game directory and return game directory info
@@ -156,6 +184,33 @@ def mask_game_path_in_savegame_location(savegame_path, preference="Auto"):
     if not savegame_path:
         return savegame_path
     
+    # First check if this is a Steam path
+    is_steam_path, steam_folder, steam_relative_path = detect_steam_folder(savegame_path)
+    
+    if is_steam_path:
+        # This is a Steam path, first mask Steam ID on the full path, then mark with (steam-folder)
+        if steam_relative_path:
+            # Apply Steam ID masking to the full path first
+            masked_full_path = mask_steamid_in_path(savegame_path)
+            # Then extract the relative path from the masked full path
+            masked_parts = masked_full_path.split(os.sep)
+            steam_index = -1
+            for i, part in enumerate(masked_parts):
+                if part.lower() == 'steam':
+                    steam_index = i
+                    break
+            
+            if steam_index >= 0 and steam_index + 1 < len(masked_parts):
+                masked_relative_path = os.sep.join(masked_parts[steam_index + 1:])
+                return f"(steam-folder)/{normalize_path_for_display(masked_relative_path)}"
+            else:
+                # Fallback: use original relative path
+                return f"(steam-folder)/{normalize_path_for_display(steam_relative_path)}"
+        else:
+            # Path ends with Steam folder
+            return "(steam-folder)"
+    
+    # If not Steam, check for game directory detection
     is_inside_game, game_dir, relative_path = detect_game_directory(savegame_path)
     
     if preference == "Game Path" or (preference == "Auto" and is_inside_game and relative_path):

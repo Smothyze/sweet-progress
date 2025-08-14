@@ -211,7 +211,7 @@ class SaveGameBackupApp:
                 self.savegame_location.set(folder)
                 self.log(f"Savegame location updated: {folder}")
             else:
-                messagebox.showerror("Invalid Path", message)
+                self.show_error_dialog("Invalid Path", message)
     
     def browse_backup(self):
         folder = filedialog.askdirectory()
@@ -225,7 +225,7 @@ class SaveGameBackupApp:
                 self.backup_location.set(folder)
                 self.log(f"Backup location updated: {folder}")
             except Exception as e:
-                messagebox.showerror("Error", f"Selected folder is not writable: {str(e)}")
+                self.show_error_dialog("Error", f"Selected folder is not writable: {str(e)}")
     
     def log(self, message):
         timestamp = datetime.now().strftime("%H:%M:%S")
@@ -256,17 +256,17 @@ class SaveGameBackupApp:
         # Validate inputs
         is_valid_title, title_message = validate_game_title(game_title)
         if not is_valid_title:
-            messagebox.showerror("Error", title_message)
+            self.show_error_dialog("Error", title_message)
             return
             
         is_valid_source, source_message = validate_path(savegame_location)
         if not is_valid_source:
-            messagebox.showerror("Error", source_message)
+            self.show_error_dialog("Error", source_message)
             return
             
         is_valid_backup, backup_message = validate_path(backup_location)
         if not is_valid_backup:
-            messagebox.showerror("Error", backup_message)
+            self.show_error_dialog("Error", backup_message)
             return
         
         # Check if backup location is writable
@@ -276,7 +276,7 @@ class SaveGameBackupApp:
                 f.write("test")
             os.remove(test_file)
         except Exception as e:
-            messagebox.showerror("Error", f"Backup location is not writable: {str(e)}")
+            self.show_error_dialog("Error", f"Backup location is not writable: {str(e)}")
             return
             
         try:
@@ -324,10 +324,13 @@ class SaveGameBackupApp:
             self.update_dropdown_values()
             # Enable list button if backup was successful
             self.validate_list_button()
-            messagebox.showinfo("Success", "Backup completed successfully!")
+            
+            # Show custom success dialog with "Open Folder" button
+            self.show_backup_success_dialog(backup_location)
         except Exception as e:
             self.log(f"Error: {str(e)}")
-            messagebox.showerror("Error", f"Backup failed: {str(e)}")
+            # Show custom error dialog with consistent design
+            self.show_backup_error_dialog(str(e))
             # Hide progress bar on error
             self.progress_bar.grid_remove()
             self.progress_var.set(0)
@@ -393,7 +396,7 @@ class SaveGameBackupApp:
         """Show path preview window"""
         savegame_location = self.savegame_location.get().strip()
         if not savegame_location:
-            messagebox.showinfo("Preview", "Please enter a savegame location first.")
+            self.show_info_dialog("Preview", "Please enter a savegame location first.")
             return
         
         PathPreviewWindow(
@@ -491,6 +494,246 @@ class SaveGameBackupApp:
         self.path_display_option.set("Auto")
         self.timestamp_option.set("Disable")
         self.log("All inputs cleared for new entry.")
+
+    def show_backup_success_dialog(self, backup_location):
+        """Show custom success dialog with option to open backup folder"""
+        # Create custom dialog
+        success_dialog = tk.Toplevel(self.root)
+        success_dialog.title("Backup Success")
+        success_dialog.geometry("400x150")
+        success_dialog.resizable(False, False)
+        success_dialog.transient(self.root)
+        success_dialog.grab_set()
+        
+        # Apply icon to success dialog
+        if os.path.exists(ICON_PATH):
+            try:
+                success_dialog.iconbitmap(ICON_PATH)
+            except Exception as e:
+                print(f"Error loading icon for success dialog: {e}")
+        
+        # Center the dialog
+        success_dialog.geometry("+%d+%d" % (
+            self.root.winfo_rootx() + 100,
+            self.root.winfo_rooty() + 100
+        ))
+        
+        # Main frame
+        main_frame = ttk.Frame(success_dialog, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Success icon and message
+        success_frame = ttk.Frame(main_frame)
+        success_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        # Success icon (using text symbol)
+        success_icon = tk.Label(success_frame, text="✓", font=("Segoe UI", 24, "bold"), fg="green")
+        success_icon.pack(side=tk.LEFT, padx=(0, 15))
+        
+        # Success message
+        message_frame = ttk.Frame(success_frame)
+        message_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        title_label = tk.Label(message_frame, text="Backup Completed!", font=("Segoe UI", 12, "bold"))
+        title_label.pack(anchor=tk.W)
+        
+        subtitle_label = tk.Label(message_frame, text="Your save game has been backed up successfully.", font=("Segoe UI", 9))
+        subtitle_label.pack(anchor=tk.W, pady=(2, 0))
+        
+        # Button frame
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        # Open Folder button
+        open_folder_btn = ttk.Button(
+            button_frame, 
+            text="Open Folder", 
+            command=lambda: self.open_backup_folder(backup_location, success_dialog)
+        )
+        open_folder_btn.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Close button
+        close_btn = ttk.Button(button_frame, text="Close", command=success_dialog.destroy)
+        close_btn.pack(side=tk.RIGHT)
+        
+        # Bind Enter key to open folder and Escape to close
+        success_dialog.bind("<Return>", lambda e: self.open_backup_folder(backup_location, success_dialog))
+        success_dialog.bind("<Escape>", lambda e: success_dialog.destroy)
+        
+        # Focus on the dialog
+        success_dialog.focus_set()
+    
+    def show_backup_error_dialog(self, error_message):
+        """Show custom error dialog with consistent design"""
+        self.show_error_dialog("Backup Failed", error_message)
+    
+    def show_error_dialog(self, title, error_message):
+        """Show generic custom error dialog with consistent design"""
+        # Create custom dialog
+        error_dialog = tk.Toplevel(self.root)
+        error_dialog.title(title)
+        error_dialog.resizable(False, False)
+        error_dialog.transient(self.root)
+        error_dialog.grab_set()
+        
+        # Apply icon to error dialog
+        if os.path.exists(ICON_PATH):
+            try:
+                error_dialog.iconbitmap(ICON_PATH)
+            except Exception as e:
+                print(f"Error loading icon for error dialog: {e}")
+        
+        # Main frame
+        main_frame = ttk.Frame(error_dialog, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Error icon and message
+        error_frame = ttk.Frame(main_frame)
+        error_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        # Error icon (using text symbol)
+        error_icon = tk.Label(error_frame, text="✗", font=("Segoe UI", 24, "bold"), fg="red")
+        error_icon.pack(side=tk.LEFT, padx=(0, 15))
+        
+        # Error message
+        message_frame = ttk.Frame(error_frame)
+        message_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        title_label = tk.Label(message_frame, text=f"{title}!", font=("Segoe UI", 12, "bold"))
+        title_label.pack(anchor=tk.W)
+        
+        # Calculate optimal width for error message
+        error_text = f"Error: {error_message}"
+        # Estimate width based on text length (approximate 8 pixels per character for Segoe UI 9pt)
+        estimated_width = min(max(len(error_text) * 8 + 100, 300), 600)  # Min 300, Max 600
+        
+        subtitle_label = tk.Label(message_frame, text=error_text, font=("Segoe UI", 9), 
+                                wraplength=estimated_width-120, justify=tk.LEFT)
+        subtitle_label.pack(anchor=tk.W, pady=(2, 0))
+        
+        # Button frame
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        # Close button (centered)
+        close_btn = ttk.Button(button_frame, text="Close", command=error_dialog.destroy)
+        close_btn.pack(expand=True)
+        
+        # Bind Escape key to close
+        error_dialog.bind("<Escape>", lambda e: error_dialog.destroy)
+        
+        # Calculate optimal dialog size based on content
+        error_dialog.update_idletasks()
+        content_width = estimated_width + 80  # Add padding for icon and margins
+        content_height = 120 + (len(error_text) // (estimated_width // 8) * 15)  # Dynamic height based on text wrapping
+        
+        # Set minimum and maximum sizes
+        content_width = max(350, min(content_width, 700))
+        content_height = max(150, min(content_height, 400))
+        
+        # Set geometry and center the dialog
+        error_dialog.geometry(f"{content_width}x{content_height}")
+        error_dialog.geometry("+%d+%d" % (
+            self.root.winfo_rootx() + (self.root.winfo_width() // 2) - (content_width // 2),
+            self.root.winfo_rooty() + (self.root.winfo_height() // 2) - (content_height // 2)
+        ))
+        
+        # Focus on the dialog
+        error_dialog.focus_set()
+    
+    def show_info_dialog(self, title, message):
+        """Show generic custom info dialog with consistent design"""
+        # Create custom dialog
+        info_dialog = tk.Toplevel(self.root)
+        info_dialog.title(title)
+        info_dialog.resizable(False, False)
+        info_dialog.transient(self.root)
+        info_dialog.grab_set()
+        
+        # Apply icon to info dialog
+        if os.path.exists(ICON_PATH):
+            try:
+                info_dialog.iconbitmap(ICON_PATH)
+            except Exception as e:
+                print(f"Error loading icon for info dialog: {e}")
+        
+        # Main frame
+        main_frame = ttk.Frame(info_dialog, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Info icon and message
+        info_frame = ttk.Frame(main_frame)
+        info_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        # Info icon (using text symbol)
+        info_icon = tk.Label(info_frame, text="ℹ", font=("Segoe UI", 24, "bold"), fg="blue")
+        info_icon.pack(side=tk.LEFT, padx=(0, 15))
+        
+        # Info message
+        message_frame = ttk.Frame(info_frame)
+        message_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        title_label = tk.Label(message_frame, text=f"{title}", font=("Segoe UI", 12, "bold"))
+        title_label.pack(anchor=tk.W)
+        
+        # Calculate optimal width for info message
+        # Estimate width based on text length (approximate 8 pixels per character for Segoe UI 9pt)
+        estimated_width = min(max(len(message) * 8 + 100, 300), 600)  # Min 300, Max 600
+        
+        subtitle_label = tk.Label(message_frame, text=message, font=("Segoe UI", 9), 
+                                wraplength=estimated_width-120, justify=tk.LEFT)
+        subtitle_label.pack(anchor=tk.W, pady=(2, 0))
+        
+        # Button frame
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        # Close button (centered)
+        close_btn = ttk.Button(button_frame, text="Close", command=info_dialog.destroy)
+        close_btn.pack(expand=True)
+        
+        # Bind Escape key to close
+        info_dialog.bind("<Escape>", lambda e: info_dialog.destroy)
+        
+        # Calculate optimal dialog size based on content
+        info_dialog.update_idletasks()
+        content_width = estimated_width + 80  # Add padding for icon and margins
+        content_height = 120 + (len(message) // (estimated_width // 8) * 15)  # Dynamic height based on text wrapping
+        
+        # Set minimum and maximum sizes
+        content_width = max(350, min(content_width, 700))
+        content_height = max(150, min(content_height, 400))
+        
+        # Set geometry and center the dialog
+        info_dialog.geometry(f"{content_width}x{content_height}")
+        info_dialog.geometry("+%d+%d" % (
+            self.root.winfo_rootx() + (self.root.winfo_width() // 2) - (content_width // 2),
+            self.root.winfo_rooty() + (self.root.winfo_height() // 2) - (content_height // 2)
+        ))
+        
+        # Focus on the dialog
+        info_dialog.focus_set()
+    
+    def open_backup_folder(self, backup_location, dialog):
+        """Open backup folder in file explorer and close dialog"""
+        try:
+            # Open folder in file explorer
+            if os.name == 'nt':  # Windows
+                os.startfile(backup_location)
+            elif os.name == 'posix':  # macOS and Linux
+                import subprocess
+                subprocess.run(['open' if os.uname().sysname == 'Darwin' else 'xdg-open', backup_location])
+            
+            # Close the dialog
+            dialog.destroy()
+            
+            # Log the action
+            self.log(f"Opened backup folder: {backup_location}")
+            
+        except Exception as e:
+            # If opening folder fails, show error but keep dialog open
+            self.show_error_dialog("Error", f"Failed to open folder: {str(e)}")
+            self.log(f"Error opening backup folder: {str(e)}")
 
     def show_about(self):
         """Show application information with hyperlink on 'Smothy'."""

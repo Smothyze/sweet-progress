@@ -140,37 +140,28 @@ class GameListWindow:
                 current_title = game.get('game_title', gid)
                 
                 # Create rename dialog
-                rename_dialog = tk.Toplevel(self.window)
-                rename_dialog.title("Rename Game Title")
-                rename_dialog.geometry("450x250")
-                rename_dialog.transient(self.window)
-                rename_dialog.grab_set()
-                rename_dialog.resizable(False, False)
+                rename_dialog = create_toplevel_window(self.window, "Rename Game Title", "350x180")
                 
                 # Center the dialog
                 rename_dialog.geometry("+%d+%d" % (
-                    self.window.winfo_rootx() + 50,
-                    self.window.winfo_rooty() + 50
+                    self.window.winfo_rootx() + 75,
+                    self.window.winfo_rooty() + 75
                 ))
                 
                 # Create widgets
                 main_frame = ttk.Frame(rename_dialog, padding=16)
                 main_frame.pack(fill=tk.BOTH, expand=True)
                 
-                # Header
-                ttk.Label(main_frame, text="Rename Game Title", font=("Segoe UI", 12, "bold")).pack(anchor=tk.W, pady=(0, 4))
-                ttk.Separator(main_frame, orient="horizontal").pack(fill=tk.X, pady=(0, 16))
-                
                 # Current title info
                 ttk.Label(main_frame, text="Current Title:", font=("Segoe UI", 9, "bold")).pack(anchor=tk.W, pady=(0, 4))
                 current_label = ttk.Label(main_frame, text=current_title, foreground="gray")
-                current_label.pack(anchor=tk.W, pady=(0, 16))
+                current_label.pack(anchor=tk.W, pady=(0, 12))
                 
                 # New title input
                 ttk.Label(main_frame, text="New Title:", font=("Segoe UI", 9, "bold")).pack(anchor=tk.W, pady=(0, 8))
                 title_var = tk.StringVar(value=current_title)
-                title_entry = ttk.Entry(main_frame, textvariable=title_var, width=50)
-                title_entry.pack(fill=tk.X, pady=(0, 20))
+                title_entry = ttk.Entry(main_frame, textvariable=title_var, width=35)
+                title_entry.pack(fill=tk.X, pady=(0, 16))
                 title_entry.select_range(0, tk.END)
                 title_entry.focus()
                 
@@ -196,9 +187,6 @@ class GameListWindow:
             
             # Update the tree view
             self.refresh_table()
-            
-            # Show success message
-            messagebox.showinfo("Success", f"Game title renamed to '{new_title}'")
             
             # Close the dialog
             dialog.destroy()

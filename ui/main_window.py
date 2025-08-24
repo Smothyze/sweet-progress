@@ -24,6 +24,9 @@ class SaveGameBackupApp:
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.root.minsize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
         
+        # Initialize backup option variables first (before menu creation)
+        self.folder_backup_var = tk.BooleanVar(value=True)  # Default checked
+        
         # Add menu bar
         self.menu_bar = tk.Menu(self.root)
         # File menu
@@ -32,6 +35,17 @@ class SaveGameBackupApp:
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.root.quit)
         self.menu_bar.add_cascade(label="File", menu=file_menu)
+        
+        # Option menu
+        option_menu = tk.Menu(self.menu_bar, tearoff=0)
+        # Backup submenu
+        backup_submenu = tk.Menu(option_menu, tearoff=0)
+        # Folder Backup sebagai indikator program (selalu aktif, tidak bisa diubah)
+        backup_submenu.add_checkbutton(label="Folder Backup", command=self.folder_backup, variable=self.folder_backup_var, state="disabled")
+        backup_submenu.add_command(label="Registry Backup", command=self.registry_backup)
+        option_menu.add_cascade(label="Backup", menu=backup_submenu)
+        self.menu_bar.add_cascade(label="Option", menu=option_menu)
+        
         # About menu
         about_menu = tk.Menu(self.menu_bar, tearoff=0)
         about_menu.add_command(label="Info", command=self.show_about)
@@ -182,6 +196,7 @@ class SaveGameBackupApp:
         self.path_display_option.trace_add('write', lambda *args: self.save_preferences())
         self.path_display_option.trace_add('write', lambda *args: self.update_game_directory_info())
         self.timestamp_option.trace_add('write', lambda *args: self.save_preferences())
+        # Note: folder_backup_var tidak perlu trace karena selalu aktif dan tidak bisa diubah
     
     def on_game_selected(self, event):
         title = self.game_title.get()
@@ -471,6 +486,7 @@ class SaveGameBackupApp:
             preferences = self.config_manager.get_preferences()
             self.path_display_option.set(preferences.get("path_display", "Auto"))
             self.timestamp_option.set(preferences.get("timestamp_option", "Disable"))
+            # Folder Backup selalu aktif, tidak perlu load dari config
         except Exception as e:
             print(f"Error loading preferences: {e}")
     
@@ -480,6 +496,7 @@ class SaveGameBackupApp:
             preferences = {
                 "path_display": self.path_display_option.get(),
                 "timestamp_option": self.timestamp_option.get()
+                # Folder Backup tidak perlu disimpan karena selalu aktif
             }
             self.config_manager.save_preferences(preferences)
             self.config_manager.save_config()
@@ -584,12 +601,12 @@ class SaveGameBackupApp:
                 print(f"Error loading icon for error dialog: {e}")
         
         # Main frame
-        main_frame = ttk.Frame(error_dialog, padding=20)
+        main_frame = ttk.Frame(error_dialog, padding=(15, 10, 15, 10))  # (left, top, right, bottom) - reduced bottom padding
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         # Error icon and message
         error_frame = ttk.Frame(main_frame)
-        error_frame.pack(fill=tk.X, pady=(0, 20))
+        error_frame.pack(fill=tk.X, pady=(0, 12))  # Further reduced bottom padding
         
         # Error icon (using text symbol)
         error_icon = tk.Label(error_frame, text="✗", font=("Segoe UI", 24, "bold"), fg="red")
@@ -611,9 +628,9 @@ class SaveGameBackupApp:
                                 wraplength=estimated_width-120, justify=tk.LEFT)
         subtitle_label.pack(anchor=tk.W, pady=(2, 0))
         
-        # Button frame
+        # Button frame with compact spacing
         button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=(10, 0))
+        button_frame.pack(fill=tk.X, pady=(12, 5))  # Reduced top and bottom padding for more compact layout
         
         # Close button (centered)
         close_btn = ttk.Button(button_frame, text="Close", command=error_dialog.destroy)
@@ -622,14 +639,22 @@ class SaveGameBackupApp:
         # Bind Escape key to close
         error_dialog.bind("<Escape>", lambda e: error_dialog.destroy)
         
-        # Calculate optimal dialog size based on content
+        # Calculate optimal dialog size based on content with dynamic height calculation
         error_dialog.update_idletasks()
         content_width = estimated_width + 80  # Add padding for icon and margins
-        content_height = 120 + (len(error_text) // (estimated_width // 8) * 15)  # Dynamic height based on text wrapping
         
-        # Set minimum and maximum sizes
+        # Dynamic height calculation based on actual content
+        base_height = 90  # Further reduced base height for title, icon, and basic layout
+        text_lines = max(1, len(error_text) // (estimated_width // 8))  # Estimate text lines
+        line_height = 16  # Reduced height per text line for more compact display
+        button_area = 45  # Further reduced height for button area
+        extra_padding = 10  # Further reduced extra padding
+        
+        content_height = base_height + (text_lines * line_height) + button_area + extra_padding
+        
+        # Set minimum and maximum sizes with more reasonable limits
         content_width = max(350, min(content_width, 700))
-        content_height = max(150, min(content_height, 400))
+        content_height = max(130, min(content_height, 250))  # Further reduced height limits for more compact proportions
         
         # Set geometry and center the dialog
         error_dialog.geometry(f"{content_width}x{content_height}")
@@ -658,12 +683,12 @@ class SaveGameBackupApp:
                 print(f"Error loading icon for info dialog: {e}")
         
         # Main frame
-        main_frame = ttk.Frame(info_dialog, padding=20)
+        main_frame = ttk.Frame(info_dialog, padding=(15, 10, 15, 10))  # (left, top, right, bottom) - reduced bottom padding
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         # Info icon and message
         info_frame = ttk.Frame(main_frame)
-        info_frame.pack(fill=tk.X, pady=(0, 20))
+        info_frame.pack(fill=tk.X, pady=(0, 12))  # Further reduced bottom padding
         
         # Info icon (using text symbol)
         info_icon = tk.Label(info_frame, text="ℹ", font=("Segoe UI", 24, "bold"), fg="blue")
@@ -684,9 +709,9 @@ class SaveGameBackupApp:
                                 wraplength=estimated_width-120, justify=tk.LEFT)
         subtitle_label.pack(anchor=tk.W, pady=(2, 0))
         
-        # Button frame
+        # Button frame with compact spacing
         button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=(10, 0))
+        button_frame.pack(fill=tk.X, pady=(12, 5))  # Reduced top and bottom padding for more compact layout
         
         # Close button (centered)
         close_btn = ttk.Button(button_frame, text="Close", command=info_dialog.destroy)
@@ -695,14 +720,22 @@ class SaveGameBackupApp:
         # Bind Escape key to close
         info_dialog.bind("<Escape>", lambda e: info_dialog.destroy)
         
-        # Calculate optimal dialog size based on content
+        # Calculate optimal dialog size based on content with dynamic height calculation
         info_dialog.update_idletasks()
         content_width = estimated_width + 80  # Add padding for icon and margins
-        content_height = 120 + (len(message) // (estimated_width // 8) * 15)  # Dynamic height based on text wrapping
         
-        # Set minimum and maximum sizes
+        # Dynamic height calculation based on actual content
+        base_height = 90  # Further reduced base height for title, icon, and basic layout
+        text_lines = max(1, len(message) // (estimated_width // 8))  # Estimate text lines
+        line_height = 16  # Reduced height per text line for more compact display
+        button_area = 45  # Further reduced height for button area
+        extra_padding = 10  # Further reduced extra padding
+        
+        content_height = base_height + (text_lines * line_height) + button_area + extra_padding
+        
+        # Set minimum and maximum sizes with more reasonable limits
         content_width = max(350, min(content_width, 700))
-        content_height = max(150, min(content_height, 400))
+        content_height = max(130, min(content_height, 250))  # Further reduced height limits for more compact proportions
         
         # Set geometry and center the dialog
         info_dialog.geometry(f"{content_width}x{content_height}")
@@ -779,4 +812,16 @@ class SaveGameBackupApp:
 
         # Close button
         close_btn = ttk.Button(about_window, text="Close", command=about_window.destroy)
-        close_btn.pack(pady=20) 
+        close_btn.pack(pady=20)
+    
+    def folder_backup(self):
+        """Handle Folder Backup menu selection - always active as program indicator"""
+        # Folder Backup selalu aktif sebagai indikator program backup folder save game
+        self.log("Folder Backup is always active - this is the core functionality of Sweet Progress")
+        self.show_info_dialog("Folder Backup", "Folder Backup is always active and cannot be disabled. This is the core functionality of Sweet Progress - a program designed specifically for backing up game save folders.")
+    
+    def registry_backup(self):
+        """Handle Registry Backup menu selection"""
+        self.log("Registry Backup option selected from Option menu")
+        # TODO: Implement registry backup functionality
+        self.show_info_dialog("Registry Backup", "Registry Backup functionality will be implemented in future versions.") 

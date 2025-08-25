@@ -40,7 +40,7 @@ class SaveGameBackupApp:
         option_menu = tk.Menu(self.menu_bar, tearoff=0)
         # Backup submenu
         backup_submenu = tk.Menu(option_menu, tearoff=0)
-        # Folder Backup sebagai indikator program (selalu aktif, tidak bisa diubah)
+        # Folder Backup as a program indicator (always enabled, cannot be changed)
         backup_submenu.add_checkbutton(label="Folder Backup", command=self.folder_backup, variable=self.folder_backup_var, state="disabled")
         backup_submenu.add_command(label="Registry Backup", command=self.registry_backup)
         option_menu.add_cascade(label="Backup", menu=backup_submenu)
@@ -769,50 +769,84 @@ class SaveGameBackupApp:
             self.log(f"Error opening backup folder: {str(e)}")
 
     def show_about(self):
-        """Show application information with hyperlink on 'Smothy'."""
-        about_window = tk.Toplevel(self.root)
-        about_window.title("Info")
-        about_window.geometry("430x220")
-        about_window.resizable(False, False)
-
-        # Apply icon to info window
+        """Show application information with consistent styling and clickable author link."""
+        # Create custom info-styled dialog
+        info_dialog = tk.Toplevel(self.root)
+        info_dialog.title("About")
+        info_dialog.resizable(False, False)
+        info_dialog.transient(self.root)
+        info_dialog.grab_set()
+        
+        # Apply icon to info dialog
         if os.path.exists(ICON_PATH):
             try:
-                about_window.iconbitmap(ICON_PATH)
+                info_dialog.iconbitmap(ICON_PATH)
             except Exception as e:
-                print(f"Error loading icon for about window: {e}")
-        else:
-            print(f"Warning: Icon file not found at {ICON_PATH}")
-
-        # Title bold and centered
-        title_label = tk.Label(about_window, text="Sweet Progress", font=("Segoe UI", 12, "bold"), anchor="center")
-        title_label.pack(fill="x", pady=(18, 0))
-
-        # Separator line
-        sep = ttk.Separator(about_window, orient="horizontal")
-        sep.pack(fill="x", padx=20, pady=(8, 15))
-
-        # Main info text
-        info_text = "Making game save backups simple, reliable, and maintainable!"
-        info_label = tk.Label(about_window, text=info_text, font=("Segoe UI", 10), justify=tk.CENTER, anchor="center")
-        info_label.pack(fill="x", padx=20, pady=(0, 10))
-
-        # Created by section - centered
-        created_by_frame = tk.Frame(about_window)
-        created_by_frame.pack(fill="x", pady=(5, 0))
+                print(f"Error loading icon for info dialog: {e}")
         
-        # "Created by" text
-        created_by_label = tk.Label(created_by_frame, text="Created by", font=("Segoe UI", 10), anchor="center")
-        created_by_label.pack(expand=True)
+        # Main frame (match show_info_dialog spacing)
+        main_frame = ttk.Frame(info_dialog, padding=(15, 10, 15, 10))
+        main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Hyperlink label
-        link = tk.Label(created_by_frame, text="Smothy", font=("Segoe UI", 10, "underline"), fg="blue", cursor="hand2")
-        link.pack(expand=True)
+        # Info icon and message container
+        info_frame = ttk.Frame(main_frame)
+        info_frame.pack(fill=tk.X, pady=(0, 12))
+        
+        # Info icon
+        info_icon = tk.Label(info_frame, text="ℹ", font=("Segoe UI", 24, "bold"), fg="blue")
+        info_icon.pack(side=tk.LEFT, padx=(0, 15))
+        
+        # Message section
+        message_frame = ttk.Frame(info_frame)
+        message_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        title_label = tk.Label(message_frame, text="About Sweet Progress", font=("Segoe UI", 12, "bold"))
+        title_label.pack(anchor=tk.W)
+        
+        subtitle_text = "Making game save backups simple, reliable, and maintainable!"
+        # Estimate width similar to show_info_dialog
+        estimated_width = min(max(len(subtitle_text) * 8 + 100, 300), 600)
+        subtitle_label = tk.Label(message_frame, text=subtitle_text, font=("Segoe UI", 9), wraplength=estimated_width-120, justify=tk.LEFT)
+        subtitle_label.pack(anchor=tk.W, pady=(2, 6))
+        
+        # Created by + hyperlink line
+        created_by_container = ttk.Frame(message_frame)
+        created_by_container.pack(anchor=tk.W)
+        created_by_label = tk.Label(created_by_container, text="Created by ", font=("Segoe UI", 9))
+        created_by_label.pack(side=tk.LEFT)
+        
+        link = tk.Label(created_by_container, text="Smothy", font=("Segoe UI", 9, "underline"), fg="blue", cursor="hand2")
+        link.pack(side=tk.LEFT)
         link.bind("<Button-1>", lambda e: webbrowser.open_new("https://guns.lol/smothyze"))
-
-        # Close button
-        close_btn = ttk.Button(about_window, text="Close", command=about_window.destroy)
-        close_btn.pack(pady=20)
+        
+        # Buttons area
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(12, 5))
+        close_btn = ttk.Button(button_frame, text="Close", command=info_dialog.destroy)
+        close_btn.pack(expand=True)
+        
+        # Bind Escape to close
+        info_dialog.bind("<Escape>", lambda e: info_dialog.destroy())
+        
+        # Dynamic sizing and centering (match show_info_dialog approach)
+        info_dialog.update_idletasks()
+        content_width = estimated_width + 80
+        base_height = 90
+        text_lines = max(1, len(subtitle_text) // (estimated_width // 8))
+        line_height = 16
+        button_area = 45
+        extra_padding = 10
+        content_height = base_height + (text_lines * line_height) + button_area + extra_padding
+        content_width = max(350, min(content_width, 700))
+        content_height = max(130, min(content_height, 250))
+        
+        info_dialog.geometry(f"{content_width}x{content_height}")
+        info_dialog.geometry("+%d+%d" % (
+            self.root.winfo_rootx() + (self.root.winfo_width() // 2) - (content_width // 2),
+            self.root.winfo_rooty() + (self.root.winfo_height() // 2) - (content_height // 2)
+        ))
+        
+        info_dialog.focus_set()
     
     def folder_backup(self):
         """Handle Folder Backup menu selection - always active as program indicator"""

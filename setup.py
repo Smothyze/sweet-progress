@@ -18,7 +18,7 @@ def read_requirements():
 
 setup(
     name="sweet-progress",
-    version="2.6.2",
+    version="2.6.4",
     author="Smothyze",
     author_email="smothyze@gmail.com",
     description="A Python-based GUI application for backing up game save files",

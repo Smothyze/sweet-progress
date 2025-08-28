@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-Modular-orange.svg)
-![Version](https://img.shields.io/badge/Version-2.6.4-brightgreen.svg)
+![Version](https://img.shields.io/badge/Version-2.7.0-brightgreen.svg)
 ![Type Hints](https://img.shields.io/badge/Type%20Hints-Enabled-blue.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
 
@@ -27,7 +27,6 @@ Sweet Progress is a cross-platform Python application designed to simplify the p
 - **Smart Dropdown**: Game list ordered by recent backup activity
 - **Real-time Progress**: Live progress indication during backup operations
 - **Game Management**: Comprehensive game list with sorting and filtering options
-- **Path Preview**: Preview how paths will appear in generated README files
 
 ### 🔒 Security & Reliability
 - **Path Validation**: Comprehensive path validation and permission checking
@@ -64,7 +63,7 @@ pip install -e .
 ### First Run
 1. **Select Game**: Choose from recent games or enter a new title
 2. **Set Paths**: Browse for savegame and backup locations
-3. **Configure Options**: Choose path display mode and timestamp options
+3. **Configure Your Preferences**: You can your custom cofig on option menu bar and go to Preferences
 4. **Create Backup**: Click "Create Backup" and monitor progress
 5. **Manage Games**: Use the List button to view and manage all games
 

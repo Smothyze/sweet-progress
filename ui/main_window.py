@@ -15,7 +15,7 @@ from utils.constants import (
     APP_NAME, WINDOW_WIDTH, WINDOW_HEIGHT, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT,
     MAX_LOG_LINES, MAX_RECENT_GAMES, DEFAULT_AUTHOR
 )
-from ui.windows import GameListWindow, CreditSettingWindow, PathPreviewWindow
+from ui.windows import GameListWindow, CreditSettingWindow, PreferencesWindow
 
 class SaveGameBackupApp:
     def __init__(self, root):
@@ -44,6 +44,8 @@ class SaveGameBackupApp:
         backup_submenu.add_checkbutton(label="Folder Backup", command=self.folder_backup, variable=self.folder_backup_var, state="disabled")
         backup_submenu.add_command(label="Registry Backup", command=self.registry_backup)
         option_menu.add_cascade(label="Backup", menu=backup_submenu)
+        option_menu.add_separator()
+        option_menu.add_command(label="Preferences", command=self.show_preferences)
         self.menu_bar.add_cascade(label="Option", menu=option_menu)
         
         # About menu
@@ -70,6 +72,11 @@ class SaveGameBackupApp:
             progress_callback=self.update_progress,
             log_callback=self.log
         )
+        
+        # Initialize windows
+        self.preferences_window = PreferencesWindow(self.root, self.config_manager)
+        # Ensure main window refreshes when preferences are saved
+        self.preferences_window.on_saved = self.load_preferences
         
         self._credit_note = ""
         
@@ -119,21 +126,10 @@ class SaveGameBackupApp:
         self.game_dir_action_label = ttk.Label(main_frame, textvariable=self.game_dir_action, foreground="green", font=("Segoe UI", 8))
         self.game_dir_action_label.grid(row=3, column=1, columnspan=3, sticky=tk.W, padx=5, pady=(0, 5))
         
-        # Path Display & Preview in one row - positioned below Savegame Location
-        ttk.Label(main_frame, text="Path Display:").grid(row=4, column=0, sticky=tk.W, pady=5)
-        self.path_display_option = tk.StringVar(value="Auto")
-        path_display_frame = ttk.Frame(main_frame)
-        path_display_frame.grid(row=4, column=1, sticky=tk.W, padx=5, pady=5)
-        ttk.Radiobutton(path_display_frame, text="Auto", variable=self.path_display_option, value="Auto").pack(side=tk.LEFT)
-        ttk.Radiobutton(path_display_frame, text="Game Path", variable=self.path_display_option, value="Game Path").pack(side=tk.LEFT, padx=10)
-        ttk.Radiobutton(path_display_frame, text="Standard", variable=self.path_display_option, value="Standard").pack(side=tk.LEFT, padx=10)
-        self.preview_btn = ttk.Button(main_frame, text="Preview", command=self.show_path_preview)
-        self.preview_btn.grid(row=4, column=2, padx=5)
+        # Path display option is controlled via Preferences
+        self.path_display_option = tk.StringVar(value=self.config_manager.get_preferences().get("path_display", "Auto"))
         
-        # Help text for Path Display
-        help_text = "Auto: Smart detection | Game Path: Use (path-to-game) | Standard: Use full path with masking"
-        help_label = ttk.Label(main_frame, text=help_text, foreground="gray", font=("Segoe UI", 7))
-        help_label.grid(row=5, column=1, columnspan=3, sticky=tk.W, padx=5, pady=(0, 5))
+        # Help text removed (settings are now in Preferences)
         
         # Backup Location
         ttk.Label(main_frame, text="Backup Location:").grid(row=6, column=0, sticky=tk.W, pady=5)
@@ -144,13 +140,8 @@ class SaveGameBackupApp:
         backup_entry.bind('<Return>', lambda e: self.log(f"Backup location updated: {self.backup_location.get()}"))
         ttk.Button(main_frame, text="Browse...", command=self.browse_backup).grid(row=6, column=2, padx=5)
         
-        # Timestamp
-        ttk.Label(main_frame, text="Timestamp:").grid(row=7, column=0, sticky=tk.W, pady=5)
+        # Timestamp controls moved to Preferences
         self.timestamp_option = tk.StringVar(value="Disable")
-        timestamp_frame = ttk.Frame(main_frame)
-        timestamp_frame.grid(row=7, column=1, sticky=tk.W, padx=5, pady=5)
-        ttk.Radiobutton(timestamp_frame, text="Disable", variable=self.timestamp_option, value="Disable").pack(side=tk.LEFT)
-        ttk.Radiobutton(timestamp_frame, text="Enable", variable=self.timestamp_option, value="Enable").pack(side=tk.LEFT, padx=10)
         
         ttk.Button(main_frame, text="Credit Setting", command=self.open_credit_setting).grid(row=8, column=1, sticky=tk.W, padx=5, pady=5)
         
@@ -192,11 +183,12 @@ class SaveGameBackupApp:
         self.savegame_location.trace_add('write', lambda *args: self.update_game_directory_info())
         self.backup_location.trace_add('write', lambda *args: self.validate_inputs())
         
-        # Save preferences when changed
-        self.path_display_option.trace_add('write', lambda *args: self.save_preferences())
+        # React to path display changes locally; saving handled in Preferences window
         self.path_display_option.trace_add('write', lambda *args: self.update_game_directory_info())
-        self.timestamp_option.trace_add('write', lambda *args: self.save_preferences())
         # Note: folder_backup_var tidak perlu trace karena selalu aktif dan tidak bisa diubah
+        
+        # Initialize default backup directory if preferences are enabled
+        self.initialize_default_backup_directory()
     
     def on_game_selected(self, event):
         title = self.game_title.get()
@@ -204,7 +196,19 @@ class SaveGameBackupApp:
         if gid:
             game = self.config_manager.get_game_by_id(gid)
             self.savegame_location.set(game.get("savegame_location", ""))
-            self.backup_location.set(game.get("backup_location", ""))
+            
+            # Check if we should use default backup directory
+            preferences = self.config_manager.get_preferences()
+            if preferences.get("save_output_directory", True):
+                default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
+                if default_backup_dir and os.path.exists(default_backup_dir):
+                    self.backup_location.set(default_backup_dir)
+                    self.log(f"Using default backup directory: {default_backup_dir}")
+                else:
+                    self.backup_location.set(game.get("backup_location", ""))
+            else:
+                self.backup_location.set(game.get("backup_location", ""))
+            
             self._selected_game_id = gid
             self.log(f"Game selected: {title}")
     
@@ -214,7 +218,18 @@ class SaveGameBackupApp:
         if gid:
             game = self.config_manager.get_game_by_id(gid)
             self.savegame_location.set(game.get("savegame_location", ""))
-            self.backup_location.set(game.get("backup_location", ""))
+            
+            # Check if we should use default backup directory
+            preferences = self.config_manager.get_preferences()
+            if preferences.get("save_output_directory", True):
+                default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
+                if default_backup_dir and os.path.exists(default_backup_dir):
+                    self.backup_location.set(default_backup_dir)
+                else:
+                    self.backup_location.set(game.get("backup_location", ""))
+            else:
+                self.backup_location.set(game.get("backup_location", ""))
+            
             self._selected_game_id = gid
     
     def browse_savegame(self):
@@ -229,6 +244,14 @@ class SaveGameBackupApp:
                 self.show_error_dialog("Invalid Path", message)
     
     def browse_backup(self):
+        # Check if we should use default backup directory
+        preferences = self.config_manager.get_preferences()
+        if preferences.get("save_output_directory", True):
+            default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
+            if default_backup_dir and os.path.exists(default_backup_dir):
+                self.show_info_dialog("Info", f"Using default backup directory: {default_backup_dir}\n\nYou can change this in Options > Preferences.")
+                return
+        
         folder = filedialog.askdirectory()
         if folder:
             # Check if folder is writable
@@ -278,7 +301,17 @@ class SaveGameBackupApp:
         if not is_valid_source:
             self.show_error_dialog("Error", source_message)
             return
-            
+        
+        # Check if we should use default backup directory
+        preferences = self.config_manager.get_preferences()
+        if preferences.get("save_output_directory", True):
+            default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
+            if default_backup_dir and os.path.exists(default_backup_dir):
+                backup_location = default_backup_dir
+                self.log(f"Using default backup directory: {backup_location}")
+                # Update the backup location field to show the user
+                self.backup_location.set(backup_location)
+        
         is_valid_backup, backup_message = validate_path(backup_location)
         if not is_valid_backup:
             self.show_error_dialog("Error", backup_message)
@@ -367,7 +400,19 @@ class SaveGameBackupApp:
             self._selected_game_id = gid
             self.game_title.set(game.get("game_title", ""))
             self.savegame_location.set(game.get("savegame_location", ""))
-            self.backup_location.set(game.get("backup_location", ""))
+            
+            # Check if we should use default backup directory
+            preferences = self.config_manager.get_preferences()
+            if preferences.get("save_output_directory", True):
+                default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
+                if default_backup_dir and os.path.exists(default_backup_dir):
+                    self.backup_location.set(default_backup_dir)
+                    self.log(f"Using default backup directory: {default_backup_dir}")
+                else:
+                    self.backup_location.set(game.get("backup_location", ""))
+            else:
+                self.backup_location.set(game.get("backup_location", ""))
+            
             self.log(f"Game selected from list: {game.get('game_title', '')}")
     
     def on_game_deleted_from_list(self, gid):
@@ -377,7 +422,18 @@ class SaveGameBackupApp:
             self._selected_game_id = None
             self.game_title.set("")
             self.savegame_location.set("")
-            self.backup_location.set("")
+            
+            # Check if we should use default backup directory
+            preferences = self.config_manager.get_preferences()
+            if preferences.get("save_output_directory", True):
+                default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
+                if default_backup_dir and os.path.exists(default_backup_dir):
+                    self.backup_location.set(default_backup_dir)
+                else:
+                    self.backup_location.set("")
+            else:
+                self.backup_location.set("")
+        
         game = self.config_manager.get_game_by_id(gid)
         self.log(f"Game '{game.get('game_title', gid) if game else gid}' has been deleted from the list.")
     
@@ -407,33 +463,23 @@ class SaveGameBackupApp:
         self._credit_note = ""
         self.log("Credit setting reset - Author cleared.")
     
-    def show_path_preview(self):
-        """Show path preview window"""
-        savegame_location = self.savegame_location.get().strip()
-        if not savegame_location:
-            self.show_info_dialog("Preview", "Please enter a savegame location first.")
-            return
-        
-        PathPreviewWindow(
-            self.root,
-            savegame_location,
-            self.path_display_option.get()
-        )
-    
     def validate_inputs(self):
         """Validate input fields and enable/disable create backup button and preview button"""
         game_title = self.game_title.get().strip()
         savegame_location = self.savegame_location.get().strip()
         backup_location = self.backup_location.get().strip()
+        
+        # Check if we should use default backup directory
+        preferences = self.config_manager.get_preferences()
+        if preferences.get("save_output_directory", True):
+            default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
+            if default_backup_dir and os.path.exists(default_backup_dir):
+                backup_location = default_backup_dir
+        
         if game_title and savegame_location and backup_location:
             self.create_backup_btn.state(["!disabled"])
         else:
             self.create_backup_btn.state(["disabled"])
-        # Enable/disable preview button
-        if savegame_location:
-            self.preview_btn.state(["!disabled"])
-        else:
-            self.preview_btn.state(["disabled"])
 
     def validate_list_button(self):
         """Validate list button state"""
@@ -487,6 +533,15 @@ class SaveGameBackupApp:
             self.path_display_option.set(preferences.get("path_display", "Auto"))
             self.timestamp_option.set(preferences.get("timestamp_option", "Disable"))
             # Folder Backup selalu aktif, tidak perlu load dari config
+            
+            # Load save_output_directory preference
+            save_output_dir = preferences.get("save_output_directory", True)
+            if save_output_dir:
+                default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
+                if default_backup_dir and os.path.exists(default_backup_dir):
+                    # Only set if backup_location is empty
+                    if not self.backup_location.get().strip():
+                        self.backup_location.set(default_backup_dir)
         except Exception as e:
             print(f"Error loading preferences: {e}")
     
@@ -495,7 +550,8 @@ class SaveGameBackupApp:
         try:
             preferences = {
                 "path_display": self.path_display_option.get(),
-                "timestamp_option": self.timestamp_option.get()
+                "timestamp_option": self.timestamp_option.get(),
+                "save_output_directory": True  # Always enabled for now, can be made configurable later
                 # Folder Backup tidak perlu disimpan karena selalu aktif
             }
             self.config_manager.save_preferences(preferences)
@@ -507,7 +563,18 @@ class SaveGameBackupApp:
         """Clear all inputs in the main form."""
         self.game_title.set("")
         self.savegame_location.set("")
-        self.backup_location.set("")
+        
+        # Check if we should use default backup directory
+        preferences = self.config_manager.get_preferences()
+        if preferences.get("save_output_directory", True):
+            default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
+            if default_backup_dir and os.path.exists(default_backup_dir):
+                self.backup_location.set(default_backup_dir)
+            else:
+                self.backup_location.set("")
+        else:
+            self.backup_location.set("")
+        
         self.path_display_option.set("Auto")
         self.timestamp_option.set("Disable")
         self.log("All inputs cleared for new entry.")
@@ -858,4 +925,20 @@ class SaveGameBackupApp:
         """Handle Registry Backup menu selection"""
         self.log("Registry Backup option selected from Option menu")
         # TODO: Implement registry backup functionality
-        self.show_info_dialog("Registry Backup", "Registry Backup functionality will be implemented in future versions.") 
+        self.show_info_dialog("Registry Backup", "Registry Backup functionality will be implemented in future versions.")
+    
+    def show_preferences(self):
+        """Show preferences window"""
+        self.log("Opening preferences window")
+        self.preferences_window.show()
+    
+    def initialize_default_backup_directory(self):
+        """Initialize default backup directory if preferences are enabled"""
+        preferences = self.config_manager.get_preferences()
+        if preferences.get("save_output_directory", True):
+            default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
+            if default_backup_dir and os.path.exists(default_backup_dir):
+                # Only set if backup_location is empty
+                if not self.backup_location.get().strip():
+                    self.backup_location.set(default_backup_dir)
+                    self.log(f"Initialized with default backup directory: {default_backup_dir}") 

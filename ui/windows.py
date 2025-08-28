@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import os
 from utils.resource_utils import ICON_PATH
 from utils.path_utils import detect_game_directory, mask_game_path_in_savegame_location, normalize_path_for_display
@@ -308,81 +308,199 @@ class CreditSettingWindow:
             messagebox.showerror("Error", f"Failed to reset credit settings: {str(e)}")
 
 class PathPreviewWindow:
-    def __init__(self, parent, savegame_location, path_display_option):
-        self.parent = parent
-        self.savegame_location = savegame_location
-        self.path_display_option = path_display_option
-        self.window = create_toplevel_window(parent, "Path Preview", "540x400")
-        self.create_widgets()
+    pass
 
+class PreferencesWindow:
+    def __init__(self, parent, config_manager):
+        self.parent = parent
+        self.config_manager = config_manager
+        self.window = None
+        self.on_saved = None
+        
+    def show(self):
+        if self.window:
+            self.window.deiconify()
+            self.window.focus_force()
+            return
+            
+        self.window = tk.Toplevel(self.parent)
+        self.window.title("Preferences")
+        self.window.geometry("500x500")
+        self.window.resizable(False, False)
+        self.window.transient(self.parent)
+        self.window.grab_set()
+        
+        self.create_widgets()
+        
+        # Load current preferences
+        self.load_preferences()
+        
+        # Adjust size to fit content so buttons are not cut off, then center
+        self.window.update_idletasks()
+        req_w = max(500, self.window.winfo_reqwidth())
+        req_h = max(500, self.window.winfo_reqheight())
+        x = (self.window.winfo_screenwidth() // 2) - (req_w // 2)
+        y = (self.window.winfo_screenheight() // 2) - (req_h // 2)
+        self.window.geometry(f"{req_w}x{req_h}+{x}+{y}")
+        
     def create_widgets(self):
-        main_frame = ttk.Frame(self.window, padding=16)
+        main_frame = ttk.Frame(self.window, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
-        # Header
-        ttk.Label(main_frame, text="README.txt Path Preview", font=("Segoe UI", 12, "bold")).pack(anchor="w", pady=(0, 8))
-        ttk.Separator(main_frame, orient="horizontal").pack(fill=tk.X, pady=(0, 12))
-        # Original path
-        ttk.Label(main_frame, text="Original Path:", font=("Segoe UI", 9, "bold")).pack(anchor=tk.W)
-        original_text = tk.Text(main_frame, height=2, wrap=tk.WORD, state=tk.DISABLED)
-        original_text.pack(fill=tk.X, pady=(2, 8))
-        # Masked path
-        ttk.Label(main_frame, text="Path in README.txt:", font=("Segoe UI", 9, "bold")).pack(anchor=tk.W)
-        masked_text = tk.Text(main_frame, height=2, wrap=tk.WORD, state=tk.DISABLED)
-        masked_text.pack(fill=tk.X, pady=(2, 8))
-        # Detection info
-        detection_frame = ttk.LabelFrame(main_frame, text="Detection Info", padding="3")
-        detection_frame.pack(fill=tk.X, pady=(6, 8))
-        detection_container = ttk.Frame(detection_frame)
-        detection_container.pack(fill=tk.X)
-        detection_info = tk.Text(detection_container, wrap=tk.WORD, height=7, state=tk.DISABLED)
-        detection_scrollbar = ttk.Scrollbar(detection_container, orient="vertical", command=detection_info.yview)
-        detection_info.configure(yscrollcommand=detection_scrollbar.set)
-        detection_info.grid(row=0, column=0, sticky="nsew")
-        detection_scrollbar.grid(row=0, column=1, sticky="ns")
-        detection_container.columnconfigure(0, weight=1)
-        # Update content
-        original_text.config(state=tk.NORMAL)
-        original_text.delete("1.0", tk.END)
-        original_text.insert("1.0", normalize_path_for_display(self.savegame_location))
-        original_text.config(state=tk.DISABLED)
-        masked_path = mask_game_path_in_savegame_location(self.savegame_location, self.path_display_option)
-        masked_text.config(state=tk.NORMAL)
-        masked_text.delete("1.0", tk.END)
-        masked_text.insert("1.0", normalize_path_for_display(masked_path))
-        masked_text.config(state=tk.DISABLED)
-        is_inside_game, game_dir, relative_path = detect_game_directory(self.savegame_location)
-        detection_info.config(state=tk.NORMAL)
-        detection_info.delete("1.0", tk.END)
-        detection_info.insert("1.0", f"Current preference: {self.path_display_option}\n\n")
-        if is_inside_game and relative_path:
-            game_name = os.path.basename(game_dir)
-            display_game_dir = normalize_path_for_display(game_dir)
-            display_relative_path = normalize_path_for_display(relative_path)
-            display_masked_path = normalize_path_for_display(masked_path)
-            detection_info.insert(tk.END, f"\u2713 Game directory detected\n")
-            detection_info.insert(tk.END, f"Game directory: {display_game_dir}\n")
-            detection_info.insert(tk.END, f"Relative path: {display_relative_path}\n")
-            detection_info.insert(tk.END, f"Result: {display_masked_path}")
-            if self.path_display_option == "Game Path":
-                detection_info.insert(tk.END, f"\n\n\U0001F4A1 This will be shared as: (path-to-game)/{display_relative_path}")
-                detection_info.insert(tk.END, f"\nOther users can replace (path-to-game) with their game folder")
-            elif self.path_display_option == "Standard":
-                detection_info.insert(tk.END, f"\n\n\U0001F4A1 This will use standard masking (username, Steam ID)")
-            else:  # Auto
-                detection_info.insert(tk.END, f"\n\n\U0001F4A1 Auto mode: Using Game Path for game directories")
+        
+        # Title
+        title_label = ttk.Label(main_frame, text="Preferences", font=("Segoe UI", 16, "bold"))
+        title_label.pack(pady=(0, 20))
+        
+        # Backup Settings Section
+        backup_frame = ttk.LabelFrame(main_frame, text="Backup Settings", padding="15")
+        backup_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        # Save output directory option
+        self.save_output_dir_var = tk.BooleanVar()
+        save_output_check = ttk.Checkbutton(
+            backup_frame, 
+            text="Save output directory", 
+            variable=self.save_output_dir_var,
+            command=self.on_save_output_dir_changed
+        )
+        save_output_check.pack(anchor=tk.W, pady=5)
+        
+        # Removed help text under Save output directory for cleaner UI
+        
+        # Default backup directory
+        ttk.Label(backup_frame, text="Default Backup Directory:").pack(anchor=tk.W, pady=(10, 5))
+        
+        dir_frame = ttk.Frame(backup_frame)
+        dir_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        self.default_backup_dir = tk.StringVar()
+        dir_entry = ttk.Entry(dir_frame, textvariable=self.default_backup_dir, width=40)
+        dir_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        
+        browse_btn = ttk.Button(dir_frame, text="Browse...", command=self.browse_default_backup_dir)
+        browse_btn.pack(side=tk.RIGHT)
+        
+        # Path Display Settings Section
+        path_frame = ttk.LabelFrame(main_frame, text="Path Display Settings", padding="15")
+        path_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        # Path display option
+        ttk.Label(path_frame, text="Default Path Display:").pack(anchor=tk.W, pady=(0, 5))
+        
+        self.path_display_var = tk.StringVar()
+        path_display_frame = ttk.Frame(path_frame)
+        path_display_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Radiobutton(path_display_frame, text="Auto", variable=self.path_display_var, value="Auto").pack(side=tk.LEFT)
+        ttk.Radiobutton(path_display_frame, text="Game Path", variable=self.path_display_var, value="Game Path").pack(side=tk.LEFT, padx=10)
+        ttk.Radiobutton(path_display_frame, text="Standard", variable=self.path_display_var, value="Standard").pack(side=tk.LEFT, padx=10)
+        
+        # Timestamp Settings Section
+        timestamp_frame = ttk.LabelFrame(main_frame, text="Timestamp Settings", padding="15")
+        timestamp_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        # Timestamp option
+        self.timestamp_var = tk.StringVar()
+        timestamp_frame_inner = ttk.Frame(timestamp_frame)
+        timestamp_frame_inner.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Radiobutton(timestamp_frame_inner, text="Enable", variable=self.timestamp_var, value="Enable").pack(side=tk.LEFT)
+        ttk.Radiobutton(timestamp_frame_inner, text="Disable", variable=self.timestamp_var, value="Disable").pack(side=tk.LEFT, padx=10)
+        
+        # Buttons
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(20, 0))
+        
+        save_btn = ttk.Button(button_frame, text="Save", command=self.save_preferences)
+        save_btn.pack(side=tk.RIGHT, padx=(5, 0))
+        
+        cancel_btn = ttk.Button(button_frame, text="Cancel", command=self.close_window)
+        cancel_btn.pack(side=tk.RIGHT)
+        
+        # Bind close event
+        self.window.protocol("WM_DELETE_WINDOW", self.close_window)
+        
+    def load_preferences(self):
+        """Load current preferences from config"""
+        preferences = self.config_manager.get_preferences()
+        
+        self.save_output_dir_var.set(preferences.get("save_output_directory", True))
+        self.path_display_var.set(preferences.get("path_display", "Auto"))
+        self.timestamp_var.set(preferences.get("timestamp_option", "Disable"))
+        
+        # Load default backup directory from config
+        default_backup = self.config_manager.config.get("default_backup_directory", "")
+        self.default_backup_dir.set(default_backup)
+        
+    def save_preferences(self):
+        """Save preferences to config"""
+        try:
+            preferences = {
+                "save_output_directory": self.save_output_dir_var.get(),
+                "path_display": self.path_display_var.get(),
+                "timestamp_option": self.timestamp_var.get()
+            }
+            
+            # Save preferences
+            self.config_manager.save_preferences(preferences)
+            
+            # Save default backup directory
+            if "default_backup_directory" not in self.config_manager.config:
+                self.config_manager.config["default_backup_directory"] = ""
+            self.config_manager.config["default_backup_directory"] = self.default_backup_dir.get()
+            
+            # Save config
+            self.config_manager.save_config()
+            
+            # Notify parent about saved preferences
+            if callable(self.on_saved):
+                try:
+                    self.on_saved()
+                except Exception:
+                    pass
+
+            messagebox.showinfo("Success", "Preferences saved successfully!")
+            self.close_window()
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save preferences: {str(e)}")
+    
+    def browse_default_backup_dir(self):
+        """Browse for default backup directory"""
+        directory = filedialog.askdirectory(
+            title="Select Default Backup Directory",
+            initialdir=self.default_backup_dir.get() if self.default_backup_dir.get() else os.path.expanduser("~")
+        )
+        if directory:
+            self.default_backup_dir.set(directory)
+    
+    def on_save_output_dir_changed(self):
+        """Handle save output directory checkbox change"""
+        if self.save_output_dir_var.get():
+            # Enable default backup directory field
+            for child in self.window.winfo_children():
+                if isinstance(child, ttk.Frame):
+                    for grandchild in child.winfo_children():
+                        if isinstance(grandchild, ttk.LabelFrame) and grandchild.cget("text") == "Backup Settings":
+                            for great_grandchild in grandchild.winfo_children():
+                                if isinstance(great_grandchild, ttk.Frame):
+                                    for entry in great_grandchild.winfo_children():
+                                        if isinstance(entry, ttk.Entry):
+                                            entry.config(state="normal")
         else:
-            display_masked_path = normalize_path_for_display(masked_path)
-            detection_info.insert(tk.END, f"\u2139 Standard savegame location\n")
-            detection_info.insert(tk.END, f"Using standard masking (username, Steam ID)\n")
-            detection_info.insert(tk.END, f"Result: {display_masked_path}")
-            if self.path_display_option == "Game Path":
-                detection_info.insert(tk.END, f"\n\n\U0001F4A1 Game Path not applicable for this location")
-            elif self.path_display_option == "Standard":
-                detection_info.insert(tk.END, f"\n\n\U0001F4A1 This will use standard masking (username, Steam ID)")
-            else:  # Auto
-                detection_info.insert(tk.END, f"\n\n\U0001F4A1 Auto mode: Using Standard for non-game directories")
-        detection_info.config(state=tk.DISABLED)
-        # Close button
-        close_frame = ttk.Frame(self.window)
-        close_frame.pack(fill=tk.X, padx=16, pady=(0, 12))
-        ttk.Button(close_frame, text="Close", command=self.window.destroy).pack(side=tk.RIGHT) 
+            # Disable default backup directory field
+            for child in self.window.winfo_children():
+                if isinstance(child, ttk.Frame):
+                    for grandchild in child.winfo_children():
+                        if isinstance(grandchild, ttk.LabelFrame) and grandchild.cget("text") == "Backup Settings":
+                            for great_grandchild in grandchild.winfo_children():
+                                if isinstance(great_grandchild, ttk.Frame):
+                                    for entry in great_grandchild.winfo_children():
+                                        if isinstance(entry, ttk.Entry):
+                                            entry.config(state="disabled")
+    
+    def close_window(self):
+        """Close preferences window"""
+        if self.window:
+            self.window.destroy()
+            self.window = None 

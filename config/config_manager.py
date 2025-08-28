@@ -21,7 +21,8 @@ class ConfigManager:
             "backup_history": {},  
             "preferences": {
                 "path_display": "Auto",
-                "timestamp_option": "Disable"
+                "timestamp_option": "Disable",
+                "save_output_directory": True
             }
         }
         
@@ -190,7 +191,8 @@ class ConfigManager:
         """Get user preferences"""
         return self.config.get("preferences", {
             "path_display": "Auto",
-            "timestamp_option": "Disable"
+            "timestamp_option": "Disable",
+            "save_output_directory": True
         })
     
     def save_preferences(self, preferences):

@@ -32,6 +32,14 @@ class BackupManager:
             if not os.path.exists(savegame_location):
                 raise FileNotFoundError(f"Source savegame folder not found: {savegame_location}")
 
+            # Check if we should use default backup directory
+            preferences = self.config_manager.get_preferences()
+            if preferences.get("save_output_directory", True):
+                default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
+                if default_backup_dir and os.path.exists(default_backup_dir):
+                    backup_location = default_backup_dir
+                    self.log(f"Using default backup directory: {backup_location}")
+
             if not os.path.exists(backup_location):
                 os.makedirs(backup_location)
                 self.log(f"Created backup directory: {backup_location}")

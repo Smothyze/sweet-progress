@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-Modular-orange.svg)
-![Version](https://img.shields.io/badge/Version-2.7.0-brightgreen.svg)
+![Version](https://img.shields.io/badge/Version-2.7.1-brightgreen.svg)
 ![Type Hints](https://img.shields.io/badge/Type%20Hints-Enabled-blue.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
 

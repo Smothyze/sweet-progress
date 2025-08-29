@@ -34,7 +34,7 @@ class BackupManager:
 
             # Check if we should use default backup directory
             preferences = self.config_manager.get_preferences()
-            if preferences.get("save_output_directory", True):
+            if preferences.get("save_output_directory", False):
                 default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
                 if default_backup_dir and os.path.exists(default_backup_dir):
                     backup_location = default_backup_dir

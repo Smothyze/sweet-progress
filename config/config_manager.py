@@ -22,7 +22,7 @@ class ConfigManager:
             "preferences": {
                 "path_display": "Auto",
                 "timestamp_option": "Disable",
-                "save_output_directory": True
+                "save_output_directory": False
             }
         }
         
@@ -192,7 +192,7 @@ class ConfigManager:
         return self.config.get("preferences", {
             "path_display": "Auto",
             "timestamp_option": "Disable",
-            "save_output_directory": True
+            "save_output_directory": False
         })
     
     def save_preferences(self, preferences):

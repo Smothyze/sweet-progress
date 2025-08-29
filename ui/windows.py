@@ -325,7 +325,7 @@ class PreferencesWindow:
             
         self.window = tk.Toplevel(self.parent)
         self.window.title("Preferences")
-        self.window.geometry("500x500")
+        self.window.geometry("500x400")
         self.window.resizable(False, False)
         self.window.transient(self.parent)
         self.window.grab_set()
@@ -345,7 +345,7 @@ class PreferencesWindow:
         # Adjust size to fit content so buttons are not cut off, then center
         self.window.update_idletasks()
         req_w = max(500, self.window.winfo_reqwidth())
-        req_h = max(500, self.window.winfo_reqheight())
+        req_h = max(400, self.window.winfo_reqheight())
         x = (self.window.winfo_screenwidth() // 2) - (req_w // 2)
         y = (self.window.winfo_screenheight() // 2) - (req_h // 2)
         self.window.geometry(f"{req_w}x{req_h}+{x}+{y}")
@@ -353,10 +353,6 @@ class PreferencesWindow:
     def create_widgets(self):
         main_frame = ttk.Frame(self.window, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Title
-        title_label = ttk.Label(main_frame, text="Preferences", font=("Segoe UI", 16, "bold"))
-        title_label.pack(pady=(0, 20))
         
         # Backup Settings Section
         backup_frame = ttk.LabelFrame(main_frame, text="Backup Settings", padding="15")
@@ -431,7 +427,7 @@ class PreferencesWindow:
         """Load current preferences from config"""
         preferences = self.config_manager.get_preferences()
         
-        self.save_output_dir_var.set(preferences.get("save_output_directory", True))
+        self.save_output_dir_var.set(preferences.get("save_output_directory", False))
         self.path_display_var.set(preferences.get("path_display", "Auto"))
         self.timestamp_var.set(preferences.get("timestamp_option", "Disable"))
         

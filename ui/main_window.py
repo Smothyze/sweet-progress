@@ -199,7 +199,7 @@ class SaveGameBackupApp:
             
             # Check if we should use default backup directory
             preferences = self.config_manager.get_preferences()
-            if preferences.get("save_output_directory", True):
+            if preferences.get("save_output_directory", False):
                 default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
                 if default_backup_dir and os.path.exists(default_backup_dir):
                     self.backup_location.set(default_backup_dir)
@@ -221,7 +221,7 @@ class SaveGameBackupApp:
             
             # Check if we should use default backup directory
             preferences = self.config_manager.get_preferences()
-            if preferences.get("save_output_directory", True):
+            if preferences.get("save_output_directory", False):
                 default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
                 if default_backup_dir and os.path.exists(default_backup_dir):
                     self.backup_location.set(default_backup_dir)
@@ -246,7 +246,7 @@ class SaveGameBackupApp:
     def browse_backup(self):
         # Check if we should use default backup directory
         preferences = self.config_manager.get_preferences()
-        if preferences.get("save_output_directory", True):
+        if preferences.get("save_output_directory", False):
             default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
             if default_backup_dir and os.path.exists(default_backup_dir):
                 self.show_info_dialog("Info", f"Using default backup directory: {default_backup_dir}\n\nYou can change this in Options > Preferences.")
@@ -304,7 +304,7 @@ class SaveGameBackupApp:
         
         # Check if we should use default backup directory
         preferences = self.config_manager.get_preferences()
-        if preferences.get("save_output_directory", True):
+        if preferences.get("save_output_directory", False):
             default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
             if default_backup_dir and os.path.exists(default_backup_dir):
                 backup_location = default_backup_dir
@@ -403,7 +403,7 @@ class SaveGameBackupApp:
             
             # Check if we should use default backup directory
             preferences = self.config_manager.get_preferences()
-            if preferences.get("save_output_directory", True):
+            if preferences.get("save_output_directory", False):
                 default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
                 if default_backup_dir and os.path.exists(default_backup_dir):
                     self.backup_location.set(default_backup_dir)
@@ -425,7 +425,7 @@ class SaveGameBackupApp:
             
             # Check if we should use default backup directory
             preferences = self.config_manager.get_preferences()
-            if preferences.get("save_output_directory", True):
+            if preferences.get("save_output_directory", False):
                 default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
                 if default_backup_dir and os.path.exists(default_backup_dir):
                     self.backup_location.set(default_backup_dir)
@@ -471,7 +471,7 @@ class SaveGameBackupApp:
         
         # Check if we should use default backup directory
         preferences = self.config_manager.get_preferences()
-        if preferences.get("save_output_directory", True):
+        if preferences.get("save_output_directory", False):
             default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
             if default_backup_dir and os.path.exists(default_backup_dir):
                 backup_location = default_backup_dir
@@ -535,7 +535,7 @@ class SaveGameBackupApp:
             # Folder Backup selalu aktif, tidak perlu load dari config
             
             # Load save_output_directory preference
-            save_output_dir = preferences.get("save_output_directory", True)
+            save_output_dir = preferences.get("save_output_directory", False)
             if save_output_dir:
                 default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
                 if default_backup_dir and os.path.exists(default_backup_dir):
@@ -551,7 +551,7 @@ class SaveGameBackupApp:
             preferences = {
                 "path_display": self.path_display_option.get(),
                 "timestamp_option": self.timestamp_option.get(),
-                "save_output_directory": True  # Always enabled for now, can be made configurable later
+                "save_output_directory": False  # Default to disabled
                 # Folder Backup tidak perlu disimpan karena selalu aktif
             }
             self.config_manager.save_preferences(preferences)
@@ -566,7 +566,7 @@ class SaveGameBackupApp:
         
         # Check if we should use default backup directory
         preferences = self.config_manager.get_preferences()
-        if preferences.get("save_output_directory", True):
+        if preferences.get("save_output_directory", False):
             default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
             if default_backup_dir and os.path.exists(default_backup_dir):
                 self.backup_location.set(default_backup_dir)
@@ -935,7 +935,7 @@ class SaveGameBackupApp:
     def initialize_default_backup_directory(self):
         """Initialize default backup directory if preferences are enabled"""
         preferences = self.config_manager.get_preferences()
-        if preferences.get("save_output_directory", True):
+        if preferences.get("save_output_directory", False):
             default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
             if default_backup_dir and os.path.exists(default_backup_dir):
                 # Only set if backup_location is empty

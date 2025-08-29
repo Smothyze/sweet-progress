@@ -330,6 +330,13 @@ class PreferencesWindow:
         self.window.transient(self.parent)
         self.window.grab_set()
         
+        # Set icon for preferences window
+        try:
+            if os.path.exists(ICON_PATH):
+                self.window.iconbitmap(ICON_PATH)
+        except Exception as e:
+            print(f"Error loading icon for Preferences window: {e}")
+        
         self.create_widgets()
         
         # Load current preferences

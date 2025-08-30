@@ -2,7 +2,7 @@
 
 # Application metadata
 APP_NAME = "Sweet Progress"
-APP_VERSION = "2.5.5"
+APP_VERSION = "2.7.2"
 APP_DESCRIPTION = "Save Game Backup Tool"
 
 # UI Configuration

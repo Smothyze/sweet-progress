@@ -133,7 +133,7 @@ class ConfigManager:
         
         return [(gid, game_title) for gid, game_title, _ in games_with_time[:max_count]]
     
-    def add_game(self, game_title, savegame_location, backup_location, game_id=None):
+    def add_game(self, game_title, savegame_location, backup_location, game_id=None, backup_mode="Folder"):
         """Add or update game configuration by id. If game_id is None, create new. Prevent duplicate game titles."""
         # Check if there is already a game with the same title
         if game_id is None:
@@ -146,17 +146,39 @@ class ConfigManager:
             "id": game_id,
             "game_title": game_title,
             "savegame_location": savegame_location,
-            "backup_location": backup_location
+            "backup_location": backup_location,
+            "backup_mode": backup_mode
         }
         return game_id
     
-    def update_last_used(self, game_title, savegame_location, backup_location):
+    def update_last_used(self, game_title, savegame_location, backup_location, game_id=None):
         """Update last used configuration without removing other fields such as author"""
         if "last_used" not in self.config or not isinstance(self.config["last_used"], dict):
             self.config["last_used"] = {}
+        
+        # If game_id is not provided, try to find it by game_title
+        if game_id is None:
+            game_id = self.get_game_id_by_title(game_title)
+        
+        self.config["last_used"]["game_id"] = game_id
         self.config["last_used"]["game_title"] = game_title
         self.config["last_used"]["savegame_location"] = savegame_location
         self.config["last_used"]["backup_location"] = backup_location
+    
+    def validate_last_used(self):
+        """Validate last_used and clear it if the game_id no longer exists in games list"""
+        if "last_used" in self.config and isinstance(self.config["last_used"], dict):
+            last_used = self.config["last_used"]
+            game_id = last_used.get("game_id")
+            
+            # If game_id exists but the game is no longer in the games list, clear last_used
+            if game_id and game_id not in self.config["games"]:
+                logger.info(f"Clearing last_used because game_id {game_id} no longer exists in games list")
+                self.config["last_used"] = {}
+                # Save config after clearing last_used
+                self.save_config()
+                return True
+        return False
     
     def update_backup_history(self, game_id, timestamp):
         """Update backup history with timestamp"""
@@ -174,6 +196,9 @@ class ConfigManager:
             del self.config["games"][game_id]
         if "backup_history" in self.config and game_id in self.config["backup_history"]:
             del self.config["backup_history"][game_id]
+        
+        # Validate and clean up last_used if the deleted game was the last used game
+        self.validate_last_used()
     
     def rename_game(self, game_id, new_title):
         """Rename game title for existing game"""

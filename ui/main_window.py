@@ -67,6 +67,10 @@ class SaveGameBackupApp:
         
         # Initialize managers
         self.config_manager = ConfigManager()
+        
+        # Validate last_used after config is loaded
+        self.config_manager.validate_last_used()
+        
         self.backup_manager = BackupManager(
             self.config_manager,
             progress_callback=self.update_progress,
@@ -161,9 +165,17 @@ class SaveGameBackupApp:
         # Load last used values
         if "last_used" in self.config_manager.config:
             last = self.config_manager.config["last_used"]
-            self.game_title.set(last.get("game_title", ""))
-            self.savegame_location.set(last.get("savegame_location", ""))
-            self.backup_location.set(last.get("backup_location", ""))
+            game_id = last.get("game_id")
+            
+            # If game_id exists and the game still exists in the list, load the values
+            if game_id and game_id in self.config_manager.config["games"]:
+                self.game_title.set(last.get("game_title", ""))
+                self.savegame_location.set(last.get("savegame_location", ""))
+                self.backup_location.set(last.get("backup_location", ""))
+                self._selected_game_id = game_id
+            else:
+                # Game no longer exists, clear last_used
+                self.config_manager.config["last_used"] = {}
         
         # Load preferences
         self.load_preferences()
@@ -335,7 +347,7 @@ class SaveGameBackupApp:
                 gid = self.config_manager.get_game_id_by_title(game_title)
             gid = self.config_manager.add_game(game_title, savegame_location, backup_location, game_id=gid)
             self._selected_game_id = gid
-            self.config_manager.update_last_used(game_title, savegame_location, backup_location)
+            self.config_manager.update_last_used(game_title, savegame_location, backup_location, game_id=gid)
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             self.config_manager.update_backup_history(gid, current_time)
             self.config_manager.save_config()
@@ -436,6 +448,9 @@ class SaveGameBackupApp:
         
         game = self.config_manager.get_game_by_id(gid)
         self.log(f"Game '{game.get('game_title', gid) if game else gid}' has been deleted from the list.")
+        
+        # Update list button state after game deletion
+        self.validate_list_button()
     
     def on_game_renamed_from_list(self, gid, old_title, new_title):
         """Callback when game is renamed from list"""
@@ -443,6 +458,9 @@ class SaveGameBackupApp:
         if self._selected_game_id == gid:
             self.game_title.set(new_title)
         self.log(f"Game title renamed from '{old_title}' to '{new_title}'")
+        
+        # Update list button state after game rename
+        self.validate_list_button()
     
     def open_credit_setting(self):
         """Open credit setting window"""

@@ -26,11 +26,14 @@ class BackupManager:
     
     def create_backup(self, game_title, savegame_location, backup_location, 
                      timestamp_option="Disable", path_display_option="Auto", 
-                     author="Smothy", credit_note=""):
+                     author="Smothy", credit_note="", backup_mode="Folder"):
         """Create backup for the specified game"""
         try:
             if not os.path.exists(savegame_location):
-                raise FileNotFoundError(f"Source savegame folder not found: {savegame_location}")
+                if backup_mode == "Folder":
+                    raise FileNotFoundError(f"Source savegame folder not found: {savegame_location}")
+                else:
+                    raise FileNotFoundError(f"Source savegame file not found: {savegame_location}")
 
             # Check if we should use default backup directory
             preferences = self.config_manager.get_preferences()
@@ -57,21 +60,36 @@ class BackupManager:
                 os.makedirs(backup_base_folder)
                 self.log(f"Created timestamped folder: {backup_base_folder}")
             
-            source_folder_name = os.path.basename(savegame_location.rstrip("/\\"))
-            destination_folder = os.path.join(backup_base_folder, source_folder_name)
+            if backup_mode == "Folder":
+                # Folder backup logic
+                source_folder_name = os.path.basename(savegame_location.rstrip("/\\"))
+                destination_folder = os.path.join(backup_base_folder, source_folder_name)
 
-            if os.path.exists(destination_folder):
-                shutil.rmtree(destination_folder)
-                self.log(f"Removed existing backup at: {destination_folder}")
-            
-            # Copy with progress
-            self.copy_with_progress(savegame_location, destination_folder)
-            
-            self.log(f"Backup successful! Savegame copied to: {destination_folder}")
+                if os.path.exists(destination_folder):
+                    shutil.rmtree(destination_folder)
+                    self.log(f"Removed existing backup at: {destination_folder}")
+                
+                # Copy with progress
+                self.copy_with_progress(savegame_location, destination_folder)
+                
+                self.log(f"Backup successful! Savegame folder copied to: {destination_folder}")
+            else:
+                # File backup logic
+                source_file_name = os.path.basename(savegame_location)
+                destination_file = os.path.join(backup_base_folder, source_file_name)
+
+                if os.path.exists(destination_file):
+                    os.remove(destination_file)
+                    self.log(f"Removed existing backup file at: {destination_file}")
+                
+                # Copy file with progress
+                self.copy_file_with_progress(savegame_location, destination_file)
+                
+                self.log(f"Backup successful! Savegame file copied to: {destination_file}")
 
             # Create credit file
             self.create_credit_file(backup_base_folder, game_title, savegame_location, 
-                                  path_display_option, author, credit_note)
+                                  path_display_option, author, credit_note, backup_mode)
 
         except Exception as e:
             raise Exception(f"Backup failed: {str(e)}")
@@ -103,15 +121,40 @@ class BackupManager:
         except Exception as e:
             raise Exception(f"Copy operation failed: {str(e)}")
     
+    def copy_file_with_progress(self, src, dst):
+        """Copy single file with progress bar"""
+        try:
+            # For single file, we'll show progress in chunks
+            file_size = os.path.getsize(src)
+            chunk_size = 1024 * 1024  # 1MB chunks
+            copied_bytes = 0
+            
+            with open(src, 'rb') as fsrc:
+                with open(dst, 'wb') as fdst:
+                    while True:
+                        chunk = fsrc.read(chunk_size)
+                        if not chunk:
+                            break
+                        fdst.write(chunk)
+                        copied_bytes += len(chunk)
+                        progress = min(100, (copied_bytes / file_size) * 100)
+                        self.update_progress(progress)
+            
+            # Ensure progress reaches 100%
+            self.update_progress(100)
+            
+        except Exception as e:
+            raise Exception(f"File copy operation failed: {str(e)}")
+    
     def create_credit_file(self, backup_base_folder, game_name, source_folder, 
-                          path_display_option, author, credit_note):
+                          path_display_option, author, credit_note, backup_mode="Folder"):
         """Create credit file with backup information"""
         credit_file_path = os.path.join(backup_base_folder, "Readme.txt")
         backup_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         separator = "=" * 60
         additional_info = (
             "**********************************************************\n"
-            "* This savegame was backed up using \"Sweet Progress\"   *\n"
+            "* This savegame was backed up using \"Sweet Progress\"     *\n"
             "* Feel free for contribute and try this program,         *\n"
             "* Check on : https://github.com/Smothyze/sweet-progress  *\n"
             "**********************************************************\n"
@@ -138,7 +181,10 @@ class BackupManager:
                 credit_file.write(f"Update on:\n")
                 credit_file.write(f"{backup_time}\n")
                 credit_file.write(f"\n")
-                credit_file.write(f"Savegame Location:\n")
+                if backup_mode == "Folder":
+                    credit_file.write(f"Savegame Location:\n")
+                else:
+                    credit_file.write(f"Savegame File:\n")
                 masked_path = mask_game_path_in_savegame_location(source_folder, path_display_option)
                 credit_file.write(f"{masked_path}\n\n")
                 credit_file.write(additional_info)

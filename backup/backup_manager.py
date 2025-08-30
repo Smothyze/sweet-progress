@@ -111,7 +111,7 @@ class BackupManager:
         separator = "=" * 60
         additional_info = (
             "**********************************************************\n"
-            "* This savegame was created using \"Sweet Progress\"       *\n"
+            "* This savegame was backed up using \"Sweet Progress\"   *\n"
             "* Feel free for contribute and try this program,         *\n"
             "* Check on : https://github.com/Smothyze/sweet-progress  *\n"
             "**********************************************************\n"

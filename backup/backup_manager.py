@@ -4,8 +4,6 @@ from datetime import datetime
 from typing import Optional, Callable
 from utils.path_utils import mask_game_path_in_savegame_location
 from utils.logger import logger
-from utils.exceptions import BackupError
-from utils.constants import BACKUP_TIMESTAMP_FORMAT, DISPLAY_TIMESTAMP_FORMAT
 
 class BackupManager:
     def __init__(self, config_manager, progress_callback: Optional[Callable[[float], None]] = None, 

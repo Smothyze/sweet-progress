@@ -1,6 +1,5 @@
 import sys
 import tkinter as tk
-from typing import NoReturn
 from ui.main_window import SaveGameBackupApp
 from utils.logger import logger
 from utils.exceptions import SweetProgressError

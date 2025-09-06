@@ -1,10 +1,7 @@
 import os
 import getpass
 from pathlib import Path
-from typing import Tuple, Optional
 from utils.logger import logger
-from utils.exceptions import PathError, ValidationError
-from utils.constants import EXECUTABLE_EXTENSIONS, INVALID_CHARS, MIN_GAME_TITLE_LENGTH, MAX_GAME_TITLE_LENGTH
 
 def get_current_username() -> str:
     """Get current system username"""

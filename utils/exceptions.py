@@ -9,15 +9,3 @@ class ConfigError(SweetProgressError):
 class BackupError(SweetProgressError):
     """Backup operation errors"""
     pass
-
-class PathError(SweetProgressError):
-    """Path validation and processing errors"""
-    pass
-
-class ValidationError(SweetProgressError):
-    """Input validation errors"""
-    pass
-
-class ResourceError(SweetProgressError):
-    """Resource loading errors"""
-    pass 

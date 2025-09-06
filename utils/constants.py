@@ -23,17 +23,6 @@ try:
     DEFAULT_AUTHOR = getpass.getuser()
 except Exception:
     DEFAULT_AUTHOR = "User"
-BACKUP_TIMESTAMP_FORMAT = "%Y-%m-%d_%H-%M-%S"
-DISPLAY_TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
-
-# File Extensions
-EXECUTABLE_EXTENSIONS = {'.exe', '.app', '.sh', '.bat', '.cmd'}
-
 # Path Display Options
 PATH_DISPLAY_OPTIONS = ["Auto", "Game Path", "Standard"]
 TIMESTAMP_OPTIONS = ["Enable", "Disable"]
-
-# Validation Rules
-MIN_GAME_TITLE_LENGTH = 1
-MAX_GAME_TITLE_LENGTH = 100
-INVALID_CHARS = ['<', '>', ':', '"', '|', '?', '*', '\\', '/'] 

@@ -3,14 +3,13 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from datetime import datetime
 import webbrowser
-from typing import Optional
 
 from config.config_manager import ConfigManager
 from backup.backup_manager import BackupManager
-from utils.path_utils import validate_path, validate_game_title, detect_game_directory, get_current_username, normalize_path_for_display
+from utils.path_utils import validate_path, validate_game_title, detect_game_directory, normalize_path_for_display
 from utils.resource_utils import ICON_PATH
 from utils.logger import logger
-from utils.exceptions import SweetProgressError, ValidationError
+from utils.exceptions import SweetProgressError
 from utils.constants import (
     APP_NAME, WINDOW_WIDTH, WINDOW_HEIGHT, MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT,
     MAX_LOG_LINES, MAX_RECENT_GAMES, DEFAULT_AUTHOR
@@ -202,6 +201,15 @@ class SaveGameBackupApp:
         # Initialize default backup directory if preferences are enabled
         self.initialize_default_backup_directory()
     
+    def _get_default_backup_directory(self):
+        """Helper method to get default backup directory if enabled"""
+        preferences = self.config_manager.get_preferences()
+        if preferences.get("save_output_directory", False):
+            default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
+            if default_backup_dir and os.path.exists(default_backup_dir):
+                return default_backup_dir
+        return None
+    
     def on_game_selected(self, event):
         title = self.game_title.get()
         gid = self.config_manager.get_game_id_by_title(title)
@@ -210,14 +218,10 @@ class SaveGameBackupApp:
             self.savegame_location.set(game.get("savegame_location", ""))
             
             # Check if we should use default backup directory
-            preferences = self.config_manager.get_preferences()
-            if preferences.get("save_output_directory", False):
-                default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
-                if default_backup_dir and os.path.exists(default_backup_dir):
-                    self.backup_location.set(default_backup_dir)
-                    self.log(f"Using default backup directory: {default_backup_dir}")
-                else:
-                    self.backup_location.set(game.get("backup_location", ""))
+            default_backup_dir = self._get_default_backup_directory()
+            if default_backup_dir:
+                self.backup_location.set(default_backup_dir)
+                self.log(f"Using default backup directory: {default_backup_dir}")
             else:
                 self.backup_location.set(game.get("backup_location", ""))
             
@@ -232,13 +236,9 @@ class SaveGameBackupApp:
             self.savegame_location.set(game.get("savegame_location", ""))
             
             # Check if we should use default backup directory
-            preferences = self.config_manager.get_preferences()
-            if preferences.get("save_output_directory", False):
-                default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
-                if default_backup_dir and os.path.exists(default_backup_dir):
-                    self.backup_location.set(default_backup_dir)
-                else:
-                    self.backup_location.set(game.get("backup_location", ""))
+            default_backup_dir = self._get_default_backup_directory()
+            if default_backup_dir:
+                self.backup_location.set(default_backup_dir)
             else:
                 self.backup_location.set(game.get("backup_location", ""))
             
@@ -257,12 +257,10 @@ class SaveGameBackupApp:
     
     def browse_backup(self):
         # Check if we should use default backup directory
-        preferences = self.config_manager.get_preferences()
-        if preferences.get("save_output_directory", False):
-            default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
-            if default_backup_dir and os.path.exists(default_backup_dir):
-                self.show_info_dialog("Info", f"Using default backup directory: {default_backup_dir}\n\nYou can change this in Options > Preferences.")
-                return
+        default_backup_dir = self._get_default_backup_directory()
+        if default_backup_dir:
+            self.show_info_dialog("Info", f"Using default backup directory: {default_backup_dir}\n\nYou can change this in Options > Preferences.")
+            return
         
         folder = filedialog.askdirectory()
         if folder:
@@ -315,14 +313,12 @@ class SaveGameBackupApp:
             return
         
         # Check if we should use default backup directory
-        preferences = self.config_manager.get_preferences()
-        if preferences.get("save_output_directory", False):
-            default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
-            if default_backup_dir and os.path.exists(default_backup_dir):
-                backup_location = default_backup_dir
-                self.log(f"Using default backup directory: {backup_location}")
-                # Update the backup location field to show the user
-                self.backup_location.set(backup_location)
+        default_backup_dir = self._get_default_backup_directory()
+        if default_backup_dir:
+            backup_location = default_backup_dir
+            self.log(f"Using default backup directory: {backup_location}")
+            # Update the backup location field to show the user
+            self.backup_location.set(backup_location)
         
         is_valid_backup, backup_message = validate_path(backup_location)
         if not is_valid_backup:
@@ -414,14 +410,10 @@ class SaveGameBackupApp:
             self.savegame_location.set(game.get("savegame_location", ""))
             
             # Check if we should use default backup directory
-            preferences = self.config_manager.get_preferences()
-            if preferences.get("save_output_directory", False):
-                default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
-                if default_backup_dir and os.path.exists(default_backup_dir):
-                    self.backup_location.set(default_backup_dir)
-                    self.log(f"Using default backup directory: {default_backup_dir}")
-                else:
-                    self.backup_location.set(game.get("backup_location", ""))
+            default_backup_dir = self._get_default_backup_directory()
+            if default_backup_dir:
+                self.backup_location.set(default_backup_dir)
+                self.log(f"Using default backup directory: {default_backup_dir}")
             else:
                 self.backup_location.set(game.get("backup_location", ""))
             
@@ -436,13 +428,9 @@ class SaveGameBackupApp:
             self.savegame_location.set("")
             
             # Check if we should use default backup directory
-            preferences = self.config_manager.get_preferences()
-            if preferences.get("save_output_directory", False):
-                default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
-                if default_backup_dir and os.path.exists(default_backup_dir):
-                    self.backup_location.set(default_backup_dir)
-                else:
-                    self.backup_location.set("")
+            default_backup_dir = self._get_default_backup_directory()
+            if default_backup_dir:
+                self.backup_location.set(default_backup_dir)
             else:
                 self.backup_location.set("")
         
@@ -488,11 +476,9 @@ class SaveGameBackupApp:
         backup_location = self.backup_location.get().strip()
         
         # Check if we should use default backup directory
-        preferences = self.config_manager.get_preferences()
-        if preferences.get("save_output_directory", False):
-            default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
-            if default_backup_dir and os.path.exists(default_backup_dir):
-                backup_location = default_backup_dir
+        default_backup_dir = self._get_default_backup_directory()
+        if default_backup_dir:
+            backup_location = default_backup_dir
         
         if game_title and savegame_location and backup_location:
             self.create_backup_btn.state(["!disabled"])
@@ -583,13 +569,9 @@ class SaveGameBackupApp:
         self.savegame_location.set("")
         
         # Check if we should use default backup directory
-        preferences = self.config_manager.get_preferences()
-        if preferences.get("save_output_directory", False):
-            default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
-            if default_backup_dir and os.path.exists(default_backup_dir):
-                self.backup_location.set(default_backup_dir)
-            else:
-                self.backup_location.set("")
+        default_backup_dir = self._get_default_backup_directory()
+        if default_backup_dir:
+            self.backup_location.set(default_backup_dir)
         else:
             self.backup_location.set("")
         
@@ -952,11 +934,9 @@ class SaveGameBackupApp:
     
     def initialize_default_backup_directory(self):
         """Initialize default backup directory if preferences are enabled"""
-        preferences = self.config_manager.get_preferences()
-        if preferences.get("save_output_directory", False):
-            default_backup_dir = self.config_manager.config.get("default_backup_directory", "")
-            if default_backup_dir and os.path.exists(default_backup_dir):
-                # Only set if backup_location is empty
-                if not self.backup_location.get().strip():
-                    self.backup_location.set(default_backup_dir)
-                    self.log(f"Initialized with default backup directory: {default_backup_dir}") 
+        default_backup_dir = self._get_default_backup_directory()
+        if default_backup_dir:
+            # Only set if backup_location is empty
+            if not self.backup_location.get().strip():
+                self.backup_location.set(default_backup_dir)
+                self.log(f"Initialized with default backup directory: {default_backup_dir}")

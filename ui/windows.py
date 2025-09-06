@@ -307,8 +307,6 @@ class CreditSettingWindow:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to reset credit settings: {str(e)}")
 
-class PathPreviewWindow:
-    pass
 
 class PreferencesWindow:
     def __init__(self, parent, config_manager):

@@ -153,20 +153,32 @@ class SaveGameBackupApp:
         self.game_title_combo.bind("<Return>", self.on_game_manual_entry)
         self.list_btn = ttk.Button(main_frame, text="List", command=self.show_game_list_window)
         self.list_btn.grid(row=0, column=2, padx=5)
+
+        # Selection state for path rows
+        self._selected_row = 0
+
+        # Selection state for path rows
+        self._selected_row = 0
         
         # Savegame Location
         # Centered section header above the input (middle column only)
         ttk.Label(main_frame, text="Savegame Location", anchor="center").grid(row=1, column=1, sticky=tk.EW, padx=5)
-        # Location type dropdown (Folder/File) replaces the previous left label
-        self.location_type = tk.StringVar(value="Folder")
-        self.location_type_combo = ttk.Combobox(main_frame, textvariable=self.location_type, state="readonly", values=["Folder", "File"], width=10)
-        self.location_type_combo.grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
-        self.savegame_location = tk.StringVar()
-        savegame_entry = ttk.Entry(main_frame, textvariable=self.savegame_location, width=50)
-        savegame_entry.grid(row=2, column=1, sticky=tk.EW, padx=5, pady=5)
-        savegame_entry.bind('<FocusOut>', lambda e: self.log(f"Savegame location updated: {self.savegame_location.get()}"))
-        savegame_entry.bind('<Return>', lambda e: self.log(f"Savegame location updated: {self.savegame_location.get()}"))
-        ttk.Button(main_frame, text="Browse...", command=self.browse_savegame).grid(row=2, column=2, padx=5)
+
+
+        # Multiple savegame paths container (rows: [Type | Path | Browse])
+        self.save_items = []  # list of dicts: {'mode_var', 'path_var', 'widgets': (combo, entry, btn)}
+        self.save_rows_container = ttk.Frame(main_frame)
+        self.save_rows_container.grid(row=2, column=0, columnspan=3, sticky=tk.EW)
+        self.save_rows_container.columnconfigure(1, weight=1)
+
+        # Controls below the rows on the left
+        controls_frame = ttk.Frame(main_frame)
+        controls_frame.grid(row=3, column=0, sticky=tk.W, padx=5, pady=(0, 5))
+        ttk.Button(controls_frame, text="+", width=3, command=self.add_path_row).pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Button(controls_frame, text="-", width=3, command=self.remove_selected_path_row).pack(side=tk.LEFT)
+
+        # Add initial row
+        self.add_path_row()
         
         # Game directory info - single icon with combined tooltip (positioned below savegame field, aligned with the field)
         self.game_dir_info = tk.StringVar()
@@ -215,8 +227,10 @@ class SaveGameBackupApp:
             
             # If game_id exists and the game still exists in the list, load the values
             if game_id and game_id in self.config_manager.config["games"]:
-                self.game_title.set(last.get("game_title", ""))
-                self.savegame_location.set(last.get("savegame_location", ""))
+                # Back-compat: isi baris pertama saja
+                self._set_first_row_path(last.get("game_title", ""))
+                # Backward compatibility: set first row with single stored path
+                self._set_first_row_path(last.get("savegame_location", ""))
                 self.backup_location.set(last.get("backup_location", ""))
                 self._selected_game_id = game_id
             else:
@@ -237,12 +251,9 @@ class SaveGameBackupApp:
         
         # Attach trace to input fields
         self.game_title.trace_add('write', lambda *args: self.validate_inputs())
-        self.savegame_location.trace_add('write', lambda *args: self.validate_inputs())
-        self.savegame_location.trace_add('write', lambda *args: self.update_game_directory_info())
-        if hasattr(self, 'location_type_combo'):
-            self.location_type_combo.bind('<<ComboboxSelected>>', self.on_location_type_changed)
+        # Multi-path UI: per-row events already update validation and tooltip
         self.backup_location.trace_add('write', lambda *args: self.validate_inputs())
-        
+        # Multi-path: per-baris sudah punya binding untuk validasi & tooltip
         # React to path display changes locally; saving handled in Preferences window
         self.path_display_option.trace_add('write', lambda *args: self.update_game_directory_info())
         # Note: single_backup_var tidak perlu trace karena selalu aktif dan tidak bisa diubah
@@ -260,11 +271,11 @@ class SaveGameBackupApp:
         return None
     
     def on_game_selected(self, event):
-        title = self.game_title.get()
+        title = self.t()
         gid = self.config_manager.get_game_id_by_title(title)
         if gid:
             game = self.config_manager.get_game_by_id(gid)
-            self.savegame_location.set(game.get("savegame_location", ""))
+            self._set_first_row_path(game.get("savegame_location", ""))
             
             # Check if we should use default backup directory
             default_backup_dir = self._get_default_backup_directory()
@@ -350,27 +361,150 @@ class SaveGameBackupApp:
         self.root.update()
     
     def on_location_type_changed(self, event=None):
-        """Reset path when switching between Folder/File to avoid mismatch in Readme."""
-        # Clear current path to force user to re-pick correct type
-        self.savegame_location.set("")
-        # Update tooltip/info display
+        """(Deprecated) Kept for backward compatibility with older UI."""
+        # No-op in multi-path UI
+        return
+
+    def add_path_row(self):
+        """Add a new savegame path row: [Type | Path | Browse]."""
+        if not hasattr(self, 'save_items'):
+            self.save_items = []
+        if not hasattr(self, 'save_rows_container'):
+            return  # safety
+        idx = len(self.save_items)
+
+        mode_var = tk.StringVar(value="Folder")
+        combo = ttk.Combobox(self.save_rows_container, textvariable=mode_var, state="readonly", values=["Folder", "File"], width=10)
+        combo.grid(row=idx, column=0, sticky=tk.W, padx=5, pady=3)
+
+        path_var = tk.StringVar()
+        entry = ttk.Entry(self.save_rows_container, textvariable=path_var, width=50)
+        entry.grid(row=idx, column=1, sticky=tk.EW, padx=5, pady=3)
+
+        btn = ttk.Button(self.save_rows_container, text="Browse...", command=lambda i=idx: self._browse_row(i))
+        btn.grid(row=idx, column=2, padx=5, pady=3)
+
+        # Selection and change bindings
+        combo.bind("<<ComboboxSelected>>", lambda e, i=idx: (self._select_row(i), self.update_game_directory_info(), self.validate_inputs()))
+        entry.bind("<FocusIn>", lambda e, i=idx: self._select_row(i))
+        entry.bind("<FocusOut>", lambda e: (self.update_game_directory_info(), self.validate_inputs()))
+        entry.bind("<Return>", lambda e: (self.update_game_directory_info(), self.validate_inputs()))
+
+        self.save_items.append({"mode_var": mode_var, "path_var": path_var, "widgets": (combo, entry, btn)})
+        self._select_row(idx)
         self.update_game_directory_info()
+        self.validate_inputs()
+
+    def remove_selected_path_row(self):
+        """Remove currently selected path row (keep at least one row)."""
+        if not getattr(self, 'save_items', None):
+            return
+        idx = getattr(self, "_selected_row", len(self.save_items) - 1)
+        if idx < 0 or idx >= len(self.save_items):
+            idx = len(self.save_items) - 1
+        combo, entry, btn = self.save_items[idx]["widgets"]
+        for w in (combo, entry, btn):
+            try:
+                w.destroy()
+            except Exception:
+                pass
+        del self.save_items[idx]
+        self._regrid_rows()
+        if not self.save_items:
+            self.add_path_row()
+        else:
+            self._select_row(min(idx, len(self.save_items) - 1))
+        self.update_game_directory_info()
+        self.validate_inputs()
+
+    def _regrid_rows(self):
+        """Re-grid remaining rows after deletion."""
+        if not getattr(self, 'save_items', None):
+            return
+        for i, item in enumerate(self.save_items):
+            combo, entry, btn = item["widgets"]
+            combo.grid_configure(row=i)
+            entry.grid_configure(row=i)
+            btn.grid_configure(row=i)
+
+    def _select_row(self, idx):
+        self._selected_row = idx
+
+    def _browse_row(self, idx):
+        """Open file/folder dialog for a specific row."""
+        if idx < 0 or idx >= len(self.save_items):
+            return
+        mode = self.save_items[idx]["mode_var"].get()
+        if mode == "File":
+            path = filedialog.askopenfilename(title="Select savegame file")
+        else:
+            path = filedialog.askdirectory(title="Select savegame folder")
+        if path:
+            is_valid, message = validate_path(path)
+            if is_valid:
+                self.save_items[idx]["path_var"].set(path)
+                self._select_row(idx)
+                self.log(f"Savegame {mode.lower()} selected: {path}")
+            else:
+                self.show_error_dialog("Invalid Path", message)
+        self.update_game_directory_info()
+        self.validate_inputs()
+
+    def _get_current_paths(self):
+        """Return list of {'path': str, 'mode': 'Folder'|'File'} for non-empty rows."""
+        items = []
+        for it in getattr(self, 'save_items', []):
+            p = it["path_var"].get().strip()
+            if p:
+                items.append({"path": p, "mode": it["mode_var"].get()})
+        return items
+
+    def _set_first_row_path(self, path):
+        """Set first row path and clear others (used when loading from config)."""
+        if not getattr(self, 'save_items', None):
+            self.add_path_row()
+        if not self.save_items:
+            self.add_path_row()
+        # Set first row
+        self.save_items[0]["path_var"].set(path or "")
+        # Clear others
+        for it in self.save_items[1:]:
+            it["path_var"].set("")
+        self._select_row(0)
+        self.update_game_directory_info()
+        self.validate_inputs()
+
+    def _clear_all_rows(self):
+        """Remove all rows and leave one empty row."""
+        if getattr(self, 'save_items', None):
+            for it in self.save_items:
+                for w in it["widgets"]:
+                    try:
+                        w.destroy()
+                    except Exception:
+                        pass
+        self.save_items = []
+        self.add_path_row()
     
     def create_backup(self):
         game_title = self.game_title.get().strip()
-        savegame_location = self.savegame_location.get().strip()
         backup_location = self.backup_location.get().strip()
+        items = self._get_current_paths()
         
         # Validate inputs
         is_valid_title, title_message = validate_game_title(game_title)
         if not is_valid_title:
             self.show_error_dialog("Error", title_message)
             return
-            
-        is_valid_source, source_message = validate_path(savegame_location)
-        if not is_valid_source:
-            self.show_error_dialog("Error", source_message)
+        if not items:
+            self.show_error_dialog("Error", "Tambahkan minimal satu path savegame.")
             return
+        # Validate all items
+        for it in items:
+            ok, msg = validate_path(it["path"])  # validate existence
+            if not ok:
+                self.show_error_dialog("Error", msg)
+                return
         
         # Check if we should use default backup directory
         default_backup_dir = self._get_default_backup_directory()
@@ -396,14 +530,14 @@ class SaveGameBackupApp:
             return
             
         try:
-            # Update configuration (add or update by id)
+            # Persist only the first path for backward compatibility
+            first_path = items[0]["path"] if items else ""
             gid = self._selected_game_id
-            # Additional: if gid is None, check if the title already exists
             if gid is None:
                 gid = self.config_manager.get_game_id_by_title(game_title)
-            gid = self.config_manager.add_game(game_title, savegame_location, backup_location, game_id=gid)
+            gid = self.config_manager.add_game(game_title, first_path, backup_location, game_id=gid)
             self._selected_game_id = gid
-            self.config_manager.update_last_used(game_title, savegame_location, backup_location, game_id=gid)
+            self.config_manager.update_last_used(game_title, first_path, backup_location, game_id=gid)
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             self.config_manager.update_backup_history(gid, current_time)
             self.config_manager.save_config()
@@ -417,31 +551,51 @@ class SaveGameBackupApp:
             # Get author from config or use default
             author = self.config_manager.config.get("last_used", {}).get("author", "").strip()
             if not author:
-                # Check if author was explicitly reset (empty string in config means reset)
                 if "last_used" in self.config_manager.config and "author" in self.config_manager.config["last_used"]:
-                    # Author was explicitly reset, use empty string
                     author = ""
                 else:
-                    # Author was never set, use default
                     author = DEFAULT_AUTHOR
             
-            # Create backup
-            # Determine backup mode based on selection (Folder/File)
-            backup_mode = self.location_type.get() if hasattr(self, 'location_type') else "Folder"
-
-            # Extra validation: ensure path type matches selected mode
-            if backup_mode == "Folder" and not os.path.isdir(savegame_location):
-                self.show_error_dialog("Error", "Selected path is not a folder. Please select a folder or switch to File mode.")
-                return
-            if backup_mode == "File" and not os.path.isfile(savegame_location):
-                self.show_error_dialog("Error", "Selected path is not a file. Please select a file or switch to Folder mode.")
-                return
-
-            self.backup_manager.create_backup(
-                game_title, savegame_location, backup_location,
-                self.timestamp_option.get(), self.path_display_option.get(),
-                author, self._credit_note, backup_mode
-            )
+            # If only one item, call single path API to retain credit format; else use multiple
+            if len(items) == 1:
+                single = items[0]
+                mode = single["mode"]
+                # Extra validation: ensure path type matches selected mode
+                if mode == "Folder" and not os.path.isdir(single["path"]):
+                    self.show_error_dialog("Error", "Selected path is not a folder. Please switch mode to File or pick a folder.")
+                    return
+                if mode == "File" and not os.path.isfile(single["path"]):
+                    self.show_error_dialog("Error", "Selected path is not a file. Please switch mode to Folder or pick a file.")
+                    return
+                self.backup_manager.create_backup(
+                    game_title, single["path"], backup_location,
+                    self.timestamp_option.get(), self.path_display_option.get(),
+                    author, self._credit_note, mode
+                )
+            else:
+                # Mixed multiple items
+                # Prepare method on BackupManager lazily (fallback to per item if not available)
+                if hasattr(self.backup_manager, 'create_backup_multiple'):
+                    self.backup_manager.create_backup_multiple(
+                        game_title, items, backup_location,
+                        self.timestamp_option.get(), self.path_display_option.get(),
+                        author, self._credit_note
+                    )
+                else:
+                    # Fallback: sequentially back up into same base folder using single API
+                    for it in items:
+                        mode = it["mode"]
+                        if mode == "Folder" and not os.path.isdir(it["path"]):
+                            self.show_error_dialog("Error", f"Not a folder: {it['path']}")
+                            return
+                        if mode == "File" and not os.path.isfile(it["path"]):
+                            self.show_error_dialog("Error", f"Not a file: {it['path']}")
+                            return
+                        self.backup_manager.create_backup(
+                            game_title, it["path"], backup_location,
+                            self.timestamp_option.get(), self.path_display_option.get(),
+                            author, self._credit_note, mode
+                        )
             
             # Hide progress bar
             self.progress_bar.grid_remove()
@@ -456,9 +610,7 @@ class SaveGameBackupApp:
             self.show_backup_success_dialog(backup_location)
         except Exception as e:
             self.log(f"Error: {str(e)}")
-            # Show custom error dialog with consistent design
             self.show_backup_error_dialog(str(e))
-            # Hide progress bar on error
             self.progress_bar.grid_remove()
             self.progress_var.set(0)
     
@@ -478,7 +630,7 @@ class SaveGameBackupApp:
         if game:
             self._selected_game_id = gid
             self.game_title.set(game.get("game_title", ""))
-            self.savegame_location.set(game.get("savegame_location", ""))
+            self._set_first_row_path(game.get("savegame_location", ""))
             
             # Check if we should use default backup directory
             default_backup_dir = self._get_default_backup_directory()
@@ -496,7 +648,7 @@ class SaveGameBackupApp:
         if self._selected_game_id == gid:
             self._selected_game_id = None
             self.game_title.set("")
-            self.savegame_location.set("")
+            self._clear_all_rows()
             
             # Check if we should use default backup directory
             default_backup_dir = self._get_default_backup_directory()
@@ -542,8 +694,11 @@ class SaveGameBackupApp:
     
     def validate_inputs(self):
         """Validate input fields and enable/disable create backup button and preview button"""
+        # Guard: during early init, backup_location may not exist yet
+        if not hasattr(self, 'backup_location'):
+            return
         game_title = self.game_title.get().strip()
-        savegame_location = self.savegame_location.get().strip()
+        items = self._get_current_paths()
         backup_location = self.backup_location.get().strip()
         
         # Check if we should use default backup directory
@@ -551,7 +706,7 @@ class SaveGameBackupApp:
         if default_backup_dir:
             backup_location = default_backup_dir
         
-        if game_title and savegame_location and backup_location:
+        if game_title and items and backup_location:
             self.create_backup_btn.state(["!disabled"])
         else:
             self.create_backup_btn.state(["disabled"])
@@ -570,8 +725,20 @@ class SaveGameBackupApp:
         self._recent_game_ids = [gid for gid, _ in recent_games]
 
     def update_game_directory_info(self):
-        """Update the game directory detection info display"""
-        savegame_location = self.savegame_location.get().strip()
+        """Update the game directory detection info display for selected row or first non-empty."""
+        # Guard if icon/tooltip not created yet during initialization
+        if not hasattr(self, 'game_dir_info_icon') or not hasattr(self, 'game_dir_info_tooltip'):
+            return
+        items = self._get_current_paths()
+        current_path = None
+        if getattr(self, 'save_items', None):
+            idx = getattr(self, '_selected_row', 0)
+            if 0 <= idx < len(self.save_items):
+                current_path = self.save_items[idx]["path_var"].get().strip()
+        if not current_path and items:
+            current_path = items[0]["path"]
+
+        savegame_location = (current_path or "").strip()
         if savegame_location:
             # Show icon if there is input
             self.game_dir_info_icon.grid()

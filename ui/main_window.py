@@ -155,19 +155,24 @@ class SaveGameBackupApp:
         self.list_btn.grid(row=0, column=2, padx=5)
         
         # Savegame Location
-        ttk.Label(main_frame, text="Savegame Location:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        # Centered section header above the input (middle column only)
+        ttk.Label(main_frame, text="Savegame Location", anchor="center").grid(row=1, column=1, sticky=tk.EW, padx=5)
+        # Location type dropdown (Folder/File) replaces the previous left label
+        self.location_type = tk.StringVar(value="Folder")
+        self.location_type_combo = ttk.Combobox(main_frame, textvariable=self.location_type, state="readonly", values=["Folder", "File"], width=10)
+        self.location_type_combo.grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
         self.savegame_location = tk.StringVar()
         savegame_entry = ttk.Entry(main_frame, textvariable=self.savegame_location, width=50)
-        savegame_entry.grid(row=1, column=1, sticky=tk.EW, padx=5, pady=5)
+        savegame_entry.grid(row=2, column=1, sticky=tk.EW, padx=5, pady=5)
         savegame_entry.bind('<FocusOut>', lambda e: self.log(f"Savegame location updated: {self.savegame_location.get()}"))
         savegame_entry.bind('<Return>', lambda e: self.log(f"Savegame location updated: {self.savegame_location.get()}"))
-        ttk.Button(main_frame, text="Browse...", command=self.browse_savegame).grid(row=1, column=2, padx=5)
+        ttk.Button(main_frame, text="Browse...", command=self.browse_savegame).grid(row=2, column=2, padx=5)
         
         # Game directory info - single icon with combined tooltip (positioned below savegame field, aligned with the field)
         self.game_dir_info = tk.StringVar()
         self.game_dir_action = tk.StringVar()
         self.game_dir_info_icon = tk.Label(main_frame, text="ⓘ", foreground="blue", font=("Segoe UI", 12), cursor="hand2")
-        self.game_dir_info_icon.grid(row=2, column=1, sticky=tk.E, padx=5, pady=(0, 5))  # Position below savegame field, aligned with the field
+        self.game_dir_info_icon.grid(row=3, column=1, sticky=tk.E, padx=5, pady=(0, 5))  # Position below savegame field, aligned with the field
         self.game_dir_info_icon.grid_remove()  # Hide initially
         self.game_dir_info_tooltip = ToolTip(self.game_dir_info_icon, "")
         
@@ -234,6 +239,8 @@ class SaveGameBackupApp:
         self.game_title.trace_add('write', lambda *args: self.validate_inputs())
         self.savegame_location.trace_add('write', lambda *args: self.validate_inputs())
         self.savegame_location.trace_add('write', lambda *args: self.update_game_directory_info())
+        if hasattr(self, 'location_type_combo'):
+            self.location_type_combo.bind('<<ComboboxSelected>>', self.on_location_type_changed)
         self.backup_location.trace_add('write', lambda *args: self.validate_inputs())
         
         # React to path display changes locally; saving handled in Preferences window
@@ -287,13 +294,17 @@ class SaveGameBackupApp:
             self._selected_game_id = gid
     
     def browse_savegame(self):
-        folder = filedialog.askdirectory()
-        if folder:
-            # Validate the selected folder
-            is_valid, message = validate_path(folder)
+        mode = self.location_type.get() if hasattr(self, 'location_type') else "Folder"
+        if mode == "File":
+            path = filedialog.askopenfilename(title="Select savegame file")
+        else:
+            path = filedialog.askdirectory(title="Select savegame folder")
+        if path:
+            # Validate the selected path
+            is_valid, message = validate_path(path)
             if is_valid:
-                self.savegame_location.set(folder)
-                self.log(f"Savegame location updated: {folder}")
+                self.savegame_location.set(path)
+                self.log(f"Savegame {mode.lower()} selected: {path}")
             else:
                 self.show_error_dialog("Invalid Path", message)
     
@@ -337,6 +348,13 @@ class SaveGameBackupApp:
         """Update progress bar"""
         self.progress_var.set(progress)
         self.root.update()
+    
+    def on_location_type_changed(self, event=None):
+        """Reset path when switching between Folder/File to avoid mismatch in Readme."""
+        # Clear current path to force user to re-pick correct type
+        self.savegame_location.set("")
+        # Update tooltip/info display
+        self.update_game_directory_info()
     
     def create_backup(self):
         game_title = self.game_title.get().strip()
@@ -408,10 +426,21 @@ class SaveGameBackupApp:
                     author = DEFAULT_AUTHOR
             
             # Create backup
+            # Determine backup mode based on selection (Folder/File)
+            backup_mode = self.location_type.get() if hasattr(self, 'location_type') else "Folder"
+
+            # Extra validation: ensure path type matches selected mode
+            if backup_mode == "Folder" and not os.path.isdir(savegame_location):
+                self.show_error_dialog("Error", "Selected path is not a folder. Please select a folder or switch to File mode.")
+                return
+            if backup_mode == "File" and not os.path.isfile(savegame_location):
+                self.show_error_dialog("Error", "Selected path is not a file. Please select a file or switch to Folder mode.")
+                return
+
             self.backup_manager.create_backup(
                 game_title, savegame_location, backup_location,
                 self.timestamp_option.get(), self.path_display_option.get(),
-                author, self._credit_note
+                author, self._credit_note, backup_mode
             )
             
             # Hide progress bar

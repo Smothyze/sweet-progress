@@ -16,6 +16,50 @@ from utils.constants import (
 )
 from ui.windows import GameListWindow, CreditSettingWindow, PreferencesWindow
 
+class ToolTip:
+    """Create a tooltip for a given widget"""
+    def __init__(self, widget, text='widget info'):
+        self.widget = widget
+        self.text = text
+        self.widget.bind("<Enter>", self.enter)
+        self.widget.bind("<Leave>", self.leave)
+        self.widget.bind("<ButtonPress>", self.enter)
+        self.tipwindow = None
+
+    def enter(self, event=None):
+        self.show_tooltip()
+
+    def leave(self, event=None):
+        self.hide_tooltip()
+
+    def show_tooltip(self):
+        if self.tipwindow or not self.text:
+            return
+        try:
+            x, y, cx, cy = self.widget.bbox("insert")
+            x = x + self.widget.winfo_rootx() + 25
+            y = y + cy + self.widget.winfo_rooty() + 25
+        except:
+            # For widgets that don't have bbox method (like Label)
+            x = self.widget.winfo_rootx() + 25
+            y = self.widget.winfo_rooty() + 25
+        self.tipwindow = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry("+%d+%d" % (x, y))
+        label = tk.Label(tw, text=self.text, justify=tk.LEFT,
+                        background="#ffffe0", relief=tk.SOLID, borderwidth=1,
+                        font=("tahoma", "8", "normal"), wraplength=300)
+        label.pack(ipadx=1)
+
+    def hide_tooltip(self):
+        tw = self.tipwindow
+        self.tipwindow = None
+        if tw:
+            tw.destroy()
+
+    def update_text(self, new_text):
+        self.text = new_text
+
 class SaveGameBackupApp:
     def __init__(self, root):
         self.root = root
@@ -24,7 +68,7 @@ class SaveGameBackupApp:
         self.root.minsize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
         
         # Initialize backup option variables first (before menu creation)
-        self.folder_backup_var = tk.BooleanVar(value=True)  # Default checked
+        self.single_backup_var = tk.BooleanVar(value=True)  # Default checked
         
         # Add menu bar
         self.menu_bar = tk.Menu(self.root)
@@ -39,9 +83,9 @@ class SaveGameBackupApp:
         option_menu = tk.Menu(self.menu_bar, tearoff=0)
         # Backup submenu
         backup_submenu = tk.Menu(option_menu, tearoff=0)
-        # Folder Backup as a program indicator (always enabled, cannot be changed)
-        backup_submenu.add_checkbutton(label="Folder Backup", command=self.folder_backup, variable=self.folder_backup_var, state="disabled")
-        backup_submenu.add_command(label="Registry Backup", command=self.registry_backup)
+        # Single Backup as a program indicator (always enabled, cannot be changed)
+        backup_submenu.add_checkbutton(label="Single Backup", command=self.single_backup, variable=self.single_backup_var, state="disabled")
+        backup_submenu.add_command(label="Batch Backup", command=self.batch_backup)
         option_menu.add_cascade(label="Backup", menu=backup_submenu)
         option_menu.add_separator()
         option_menu.add_command(label="Preferences", command=self.show_preferences)
@@ -119,15 +163,13 @@ class SaveGameBackupApp:
         savegame_entry.bind('<Return>', lambda e: self.log(f"Savegame location updated: {self.savegame_location.get()}"))
         ttk.Button(main_frame, text="Browse...", command=self.browse_savegame).grid(row=1, column=2, padx=5)
         
-        # Game directory detection info - moved to separate row
+        # Game directory info - single icon with combined tooltip (positioned below savegame field, aligned with the field)
         self.game_dir_info = tk.StringVar()
-        self.game_dir_label = ttk.Label(main_frame, textvariable=self.game_dir_info, foreground="blue", font=("Segoe UI", 8))
-        self.game_dir_label.grid(row=2, column=1, columnspan=3, sticky=tk.W, padx=5, pady=(0, 5))
-        
-        # Game directory action info - second line
         self.game_dir_action = tk.StringVar()
-        self.game_dir_action_label = ttk.Label(main_frame, textvariable=self.game_dir_action, foreground="green", font=("Segoe UI", 8))
-        self.game_dir_action_label.grid(row=3, column=1, columnspan=3, sticky=tk.W, padx=5, pady=(0, 5))
+        self.game_dir_info_icon = tk.Label(main_frame, text="ⓘ", foreground="blue", font=("Segoe UI", 12), cursor="hand2")
+        self.game_dir_info_icon.grid(row=2, column=1, sticky=tk.E, padx=5, pady=(0, 5))  # Position below savegame field, aligned with the field
+        self.game_dir_info_icon.grid_remove()  # Hide initially
+        self.game_dir_info_tooltip = ToolTip(self.game_dir_info_icon, "")
         
         # Path display option is controlled via Preferences
         self.path_display_option = tk.StringVar(value=self.config_manager.get_preferences().get("path_display", "Auto"))
@@ -196,7 +238,7 @@ class SaveGameBackupApp:
         
         # React to path display changes locally; saving handled in Preferences window
         self.path_display_option.trace_add('write', lambda *args: self.update_game_directory_info())
-        # Note: folder_backup_var tidak perlu trace karena selalu aktif dan tidak bisa diubah
+        # Note: single_backup_var tidak perlu trace karena selalu aktif dan tidak bisa diubah
         
         # Initialize default backup directory if preferences are enabled
         self.initialize_default_backup_directory()
@@ -502,33 +544,39 @@ class SaveGameBackupApp:
         """Update the game directory detection info display"""
         savegame_location = self.savegame_location.get().strip()
         if savegame_location:
-            # Show label if there is input
-            self.game_dir_label.grid()
-            self.game_dir_action_label.grid()
+            # Show icon if there is input
+            self.game_dir_info_icon.grid()
             is_inside_game, game_dir, relative_path = detect_game_directory(savegame_location)
             preference = self.path_display_option.get()
+            
             if is_inside_game and relative_path:
                 game_name = os.path.basename(game_dir)
                 display_relative_path = normalize_path_for_display(relative_path)
-                self.game_dir_info.set(f"✓ Game detected: {game_name}")
+                info_text = f"✓ Game detected: {game_name}"
                 if preference == "Game Path":
-                    self.game_dir_action.set(f"Will use: (path-to-game)/{display_relative_path}")
+                    action_text = f"Will use: (path-to-game)/{display_relative_path}"
                 elif preference == "Standard":
-                    self.game_dir_action.set(f"Will use: Standard masking")
+                    action_text = f"Will use: Standard masking"
                 else:  # Auto
-                    self.game_dir_action.set(f"Will use: (path-to-game)/{display_relative_path}")
+                    action_text = f"Will use: (path-to-game)/{display_relative_path}"
             else:
-                self.game_dir_info.set(f"ℹ Standard savegame location")
+                info_text = f"ℹ Standard savegame location"
                 if preference == "Game Path":
-                    self.game_dir_action.set(f"Will use: Standard masking (Game Path not applicable)")
+                    action_text = f"Will use: Standard masking (Game Path not applicable)"
                 else:
-                    self.game_dir_action.set(f"Will use: Standard masking")
+                    action_text = f"Will use: Standard masking"
+            
+            # Combine both info and action into single tooltip
+            combined_tooltip = f"{info_text}\n{action_text}"
+            self.game_dir_info.set(info_text)
+            self.game_dir_action.set(action_text)
+            self.game_dir_info_tooltip.update_text(combined_tooltip)
         else:
-            # Hide label if there is no input
-            self.game_dir_label.grid_remove()
-            self.game_dir_action_label.grid_remove()
+            # Hide icon if there is no input
+            self.game_dir_info_icon.grid_remove()
             self.game_dir_info.set("")
             self.game_dir_action.set("")
+            self.game_dir_info_tooltip.update_text("")
 
     def load_preferences(self):
         """Load user preferences from config"""
@@ -915,17 +963,17 @@ class SaveGameBackupApp:
         
         info_dialog.focus_set()
     
-    def folder_backup(self):
-        """Handle Folder Backup menu selection - always active as program indicator"""
-        # Folder Backup selalu aktif sebagai indikator program backup folder save game
-        self.log("Folder Backup is always active - this is the core functionality of Sweet Progress")
-        self.show_info_dialog("Folder Backup", "Folder Backup is always active and cannot be disabled. This is the core functionality of Sweet Progress - a program designed specifically for backing up game save folders.")
+    def single_backup(self):
+        """Handle Single Backup menu selection - always active as program indicator"""
+        # Single Backup selalu aktif sebagai indikator program backup folder save game
+        self.log("Single Backup is always active - this is the core functionality of Sweet Progress")
+        self.show_info_dialog("Single Backup", "Single Backup is always active and cannot be disabled. This is the core functionality of Sweet Progress - a program designed specifically for backing up game save folders.")
     
-    def registry_backup(self):
-        """Handle Registry Backup menu selection"""
-        self.log("Registry Backup option selected from Option menu")
-        # TODO: Implement registry backup functionality
-        self.show_info_dialog("Registry Backup", "Registry Backup functionality will be implemented in future versions.")
+    def batch_backup(self):
+        """Handle Batch Backup menu selection"""
+        self.log("Batch Backup option selected from Option menu")
+        # TODO: Implement batch backup functionality
+        self.show_info_dialog("Batch Backup", "Batch Backup functionality will be implemented in future versions.")
     
     def show_preferences(self):
         """Show preferences window"""

@@ -84,16 +84,17 @@ class SaveGameBackupApp:
         # Backup submenu
         backup_submenu = tk.Menu(option_menu, tearoff=0)
         # Single Backup as a program indicator (always enabled, cannot be changed)
-        backup_submenu.add_checkbutton(label="Single Backup", command=self.single_backup, variable=self.single_backup_var, state="disabled")
-        backup_submenu.add_command(label="Batch Backup", command=self.batch_backup)
+        # Placeholder commands to avoid missing attribute errors
+        backup_submenu.add_checkbutton(label="Single Backup", command=getattr(self, 'single_backup', lambda: None), variable=self.single_backup_var, state="disabled")
+        backup_submenu.add_command(label="Batch Backup", command=getattr(self, 'batch_backup', lambda: None))
         option_menu.add_cascade(label="Backup", menu=backup_submenu)
         option_menu.add_separator()
-        option_menu.add_command(label="Preferences", command=self.show_preferences)
+        option_menu.add_command(label="Preferences", command=getattr(self, 'show_preferences', lambda: None))
         self.menu_bar.add_cascade(label="Option", menu=option_menu)
         
         # About menu
         about_menu = tk.Menu(self.menu_bar, tearoff=0)
-        about_menu.add_command(label="Info", command=self.show_about)
+        about_menu.add_command(label="Info", command=getattr(self, 'show_about', lambda: None))
         about_menu.add_separator()
         about_menu.add_command(label="GitHub", command=lambda: webbrowser.open_new("https://github.com/Smothyze/sweet-progress"))
         self.menu_bar.add_cascade(label="About", menu=about_menu)
@@ -124,6 +125,12 @@ class SaveGameBackupApp:
         self.preferences_window = PreferencesWindow(self.root, self.config_manager)
         # Ensure main window refreshes when preferences are saved
         self.preferences_window.on_saved = self.load_preferences
+        
+        # Stub methods to prevent attribute errors if menu items are clicked
+        self.single_backup = lambda: None
+        self.batch_backup = lambda: None
+        self.show_preferences = self.preferences_window.show
+        self.show_about = lambda: messagebox.showinfo("About", "Sweet Progress")
         
         self._credit_note = ""
         
@@ -171,11 +178,10 @@ class SaveGameBackupApp:
         self.save_rows_container.grid(row=2, column=0, columnspan=3, sticky=tk.EW)
         self.save_rows_container.columnconfigure(1, weight=1)
 
-        # Controls below the rows on the left
-        controls_frame = ttk.Frame(main_frame)
-        controls_frame.grid(row=3, column=0, sticky=tk.W, padx=5, pady=(0, 5))
-        ttk.Button(controls_frame, text="+", width=3, command=self.add_path_row).pack(side=tk.LEFT, padx=(0, 4))
-        ttk.Button(controls_frame, text="-", width=3, command=self.remove_selected_path_row).pack(side=tk.LEFT)
+        # Controls inside the save_rows_container, below the path rows (left-aligned on the path column)
+        self.controls_frame = ttk.Frame(self.save_rows_container)
+        ttk.Button(self.controls_frame, text="+", width=3, command=self.add_path_row).pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Button(self.controls_frame, text="-", width=3, command=self.remove_selected_path_row).pack(side=tk.LEFT)
 
         # Add initial row
         self.add_path_row()
@@ -271,7 +277,7 @@ class SaveGameBackupApp:
         return None
     
     def on_game_selected(self, event):
-        title = self.t()
+        title = self.game_title.get()
         gid = self.config_manager.get_game_id_by_title(title)
         if gid:
             game = self.config_manager.get_game_by_id(gid)
@@ -293,7 +299,8 @@ class SaveGameBackupApp:
         gid = self.config_manager.get_game_id_by_title(title)
         if gid:
             game = self.config_manager.get_game_by_id(gid)
-            self.savegame_location.set(game.get("savegame_location", ""))
+            # Set first row with the saved location; multi-row UI keeps consistency
+            self._set_first_row_path(game.get("savegame_location", ""))
             
             # Check if we should use default backup directory
             default_backup_dir = self._get_default_backup_directory()
@@ -304,20 +311,7 @@ class SaveGameBackupApp:
             
             self._selected_game_id = gid
     
-    def browse_savegame(self):
-        mode = self.location_type.get() if hasattr(self, 'location_type') else "Folder"
-        if mode == "File":
-            path = filedialog.askopenfilename(title="Select savegame file")
-        else:
-            path = filedialog.askdirectory(title="Select savegame folder")
-        if path:
-            # Validate the selected path
-            is_valid, message = validate_path(path)
-            if is_valid:
-                self.savegame_location.set(path)
-                self.log(f"Savegame {mode.lower()} selected: {path}")
-            else:
-                self.show_error_dialog("Invalid Path", message)
+    # Removed legacy browse_savegame; use per-row browse via _browse_row
     
     def browse_backup(self):
         # Check if we should use default backup directory
@@ -365,6 +359,14 @@ class SaveGameBackupApp:
         # No-op in multi-path UI
         return
 
+    def _place_controls_frame(self):
+        """Place the +/− controls directly below the last path row inside save_rows_container."""
+        if not hasattr(self, 'controls_frame'):
+            return
+        last_row = len(getattr(self, 'save_items', []))
+        # Place controls on the next row, under the path column (column=1), left-aligned
+        self.controls_frame.grid(row=last_row, column=1, sticky=tk.W, padx=5, pady=(0, 5))
+
     def add_path_row(self):
         """Add a new savegame path row: [Type | Path | Browse]."""
         if not hasattr(self, 'save_items'):
@@ -394,6 +396,8 @@ class SaveGameBackupApp:
         self._select_row(idx)
         self.update_game_directory_info()
         self.validate_inputs()
+        # Re-place controls under the last row
+        self._place_controls_frame()
 
     def remove_selected_path_row(self):
         """Remove currently selected path row (keep at least one row)."""
@@ -426,6 +430,8 @@ class SaveGameBackupApp:
             combo.grid_configure(row=i)
             entry.grid_configure(row=i)
             btn.grid_configure(row=i)
+        # Re-place controls under the last remaining row
+        self._place_controls_frame()
 
     def _select_row(self, idx):
         self._selected_row = idx
